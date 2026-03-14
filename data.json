@@ -1,0 +1,295 @@
+{
+  "users": [
+    {
+      "id": "0d9b2a02-cad0-4f29-bb3e-bcc671545b22",
+      "name": "Minhal",
+      "email": "hasnain.kazmee@sunhub.com",
+      "role": "member",
+      "token": "minhal-abc123",
+      "created_at": "2026-03-14T00:47:09.006Z"
+    },
+    {
+      "id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "name": "Meeran",
+      "email": "hasnain.kazmee@sunhub.com",
+      "role": "member",
+      "token": "meeran-def456",
+      "created_at": "2026-03-14T00:47:09.006Z"
+    },
+    {
+      "id": "d4890a5a-b18c-4d00-a695-d6fb0dad5de0",
+      "name": "Daniyal",
+      "email": "hasnain.kazmee@sunhub.com",
+      "role": "admin",
+      "token": "daniyal-ghi789",
+      "created_at": "2026-03-14T00:47:09.006Z"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "53d8303a-d077-4043-9690-0742e6b49286",
+      "name": "Social Media Design Review",
+      "description": "Default approval chain for social media designs.",
+      "is_active": true,
+      "created_at": "2026-03-14T00:47:09.006Z"
+    }
+  ],
+  "workflow_steps": [
+    {
+      "id": "44efabaa-cb68-43b4-ac8a-ec17e993fd11",
+      "workflow_id": "53d8303a-d077-4043-9690-0742e6b49286",
+      "step": 1,
+      "user_id": "0d9b2a02-cad0-4f29-bb3e-bcc671545b22",
+      "focus": "Check brand consistency — logo usage, brand colors, and typography"
+    },
+    {
+      "id": "03ddb39f-9164-49c8-a8bf-8fe492bbd04d",
+      "workflow_id": "53d8303a-d077-4043-9690-0742e6b49286",
+      "step": 2,
+      "user_id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "focus": "Check copy accuracy, safe margins, and overall aesthetic"
+    },
+    {
+      "id": "32ca31dd-1027-4df6-9d78-909729cf0528",
+      "workflow_id": "53d8303a-d077-4043-9690-0742e6b49286",
+      "step": 3,
+      "user_id": "d4890a5a-b18c-4d00-a695-d6fb0dad5de0",
+      "focus": "Final approval — overall sign-off"
+    }
+  ],
+  "submissions": [
+    {
+      "id": "1dd7dadf-a414-47bd-9202-462dbb7792ca",
+      "title": "Emporia ad promotions",
+      "description": "",
+      "status": "approved",
+      "current_step": null,
+      "created_at": "2026-03-13T23:48:23.987Z",
+      "workflow_id": "53d8303a-d077-4043-9690-0742e6b49286"
+    },
+    {
+      "id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "title": "Jackery Products",
+      "description": "",
+      "status": "in_review",
+      "current_step": 1,
+      "created_at": "2026-03-13T23:56:49.737Z",
+      "workflow_id": "53d8303a-d077-4043-9690-0742e6b49286"
+    },
+    {
+      "id": "41d076f3-950a-4c6a-be6a-5d5735eb13e6",
+      "title": "Banner for review",
+      "description": "",
+      "status": "in_review",
+      "current_step": 3,
+      "created_at": "2026-03-14T00:11:37.791Z",
+      "workflow_id": "53d8303a-d077-4043-9690-0742e6b49286"
+    },
+    {
+      "id": "35b29d42-7e99-415a-a167-1efe37fb4dba",
+      "title": "Inverter Ad",
+      "description": "",
+      "status": "in_review",
+      "current_step": 3,
+      "created_at": "2026-03-14T00:16:17.550Z",
+      "workflow_id": "53d8303a-d077-4043-9690-0742e6b49286"
+    },
+    {
+      "id": "6b5d5ff2-b84a-4ec6-a335-662079146e39",
+      "title": "Image for Social Banners",
+      "description": "",
+      "status": "in_review",
+      "current_step": 3,
+      "created_at": "2026-03-14T00:31:16.128Z",
+      "workflow_id": "53d8303a-d077-4043-9690-0742e6b49286"
+    }
+  ],
+  "designs": [
+    {
+      "id": "924e7888-d1e2-43c7-af88-52404a3f315f",
+      "submission_id": "1dd7dadf-a414-47bd-9202-462dbb7792ca",
+      "filename": "49c13cf5-9722-4222-afbe-62785a51bc74.png",
+      "original_name": "Brand Promotion - Emporia - Product 1.png",
+      "variation_label": "A",
+      "order_index": 0
+    },
+    {
+      "id": "29310c30-2f42-4849-af3c-088daaf34ac1",
+      "submission_id": "1dd7dadf-a414-47bd-9202-462dbb7792ca",
+      "filename": "6580cf82-38cc-4641-9e08-75b4cf475d32.png",
+      "original_name": "Brand Promotion - Emporia - Product 2.png",
+      "variation_label": "B",
+      "order_index": 1
+    },
+    {
+      "id": "b206b185-a736-4d0d-a290-8fa7f547847c",
+      "submission_id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "filename": "99f54459-a651-4446-a8ed-ea7b4523586f.png",
+      "original_name": "Safe Margins - Brand Promotion - Product 5 - Jackery.png",
+      "variation_label": "A",
+      "order_index": 0
+    },
+    {
+      "id": "8839b903-c967-46ea-8f3c-f1959a692318",
+      "submission_id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "filename": "a2cffaf0-3fce-4f12-93b4-a0fa0bbe2d76.png",
+      "original_name": "Safe Margins - Brand Promotion - Product 4 - Jackery.png",
+      "variation_label": "B",
+      "order_index": 1
+    },
+    {
+      "id": "58c9a864-9697-4c21-ac92-2168c8a3776b",
+      "submission_id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "filename": "ed1582ad-a47d-437b-9d91-dbc6850dc648.png",
+      "original_name": "Safe Margins - Brand Promotion - Product 3 - Jackery.png",
+      "variation_label": "C",
+      "order_index": 2
+    },
+    {
+      "id": "292e191d-a5c0-4897-b6e3-411703afa2ff",
+      "submission_id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "filename": "172cdff2-34f7-40ac-83d8-9dd02ab21f2a.png",
+      "original_name": "Safe Margins - Brand Promotion - Product 2 - Jackery.png",
+      "variation_label": "D",
+      "order_index": 3
+    },
+    {
+      "id": "7d6f1bd3-91aa-4b9c-883e-109bc52756ea",
+      "submission_id": "41d076f3-950a-4c6a-be6a-5d5735eb13e6",
+      "filename": "b25a3173-29c0-44be-9f83-a35536501a7f.png",
+      "original_name": "f1d88282-529a-4e37-a4dc-951d4e5b6f46.png",
+      "variation_label": "A",
+      "order_index": 0
+    },
+    {
+      "id": "6671fbe1-e2f9-485b-a208-1e4ab6989fb0",
+      "submission_id": "35b29d42-7e99-415a-a167-1efe37fb4dba",
+      "filename": "3647644c-780e-4910-bd63-ae28cf389689.jpeg",
+      "original_name": "3a68f92e-a20c-439f-8436-42ca77f048ca.jpeg",
+      "variation_label": "A",
+      "order_index": 0
+    },
+    {
+      "id": "f025a22f-49a9-4635-b2dd-4b187c3d6efe",
+      "submission_id": "6b5d5ff2-b84a-4ec6-a335-662079146e39",
+      "filename": "0cd60c35-dd12-4dd6-84b5-b18f13051be4.jpg",
+      "original_name": "solar-panel-photovoltaic-renewable-2026-03-13-01-27-30-utc.jpg",
+      "variation_label": "A",
+      "order_index": 0
+    }
+  ],
+  "reviews": [
+    {
+      "id": "e7689ae8-dd90-4d57-af9b-508457e6a6b1",
+      "submission_id": "1dd7dadf-a414-47bd-9202-462dbb7792ca",
+      "reviewer_id": "0d9b2a02-cad0-4f29-bb3e-bcc671545b22",
+      "action": "approved",
+      "comment": "Good to go from my side.",
+      "created_at": "2026-03-13T23:50:13.177Z"
+    },
+    {
+      "id": "f06663f6-843a-4958-b0b8-476cd747395d",
+      "submission_id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "reviewer_id": "0d9b2a02-cad0-4f29-bb3e-bcc671545b22",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-13T23:57:20.428Z"
+    },
+    {
+      "id": "d6c09b5c-4b41-4107-b3a9-03a08ce2b911",
+      "submission_id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "reviewer_id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "action": "changes_requested",
+      "comment": "Fix the changes and good to go.",
+      "created_at": "2026-03-14T00:07:17.913Z"
+    },
+    {
+      "id": "d43b6156-0cb0-4dd8-96b3-7be05eb5c486",
+      "submission_id": "1dd7dadf-a414-47bd-9202-462dbb7792ca",
+      "reviewer_id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-14T00:07:38.255Z"
+    },
+    {
+      "id": "4ae34fc3-8392-4202-b327-925880e5be85",
+      "submission_id": "41d076f3-950a-4c6a-be6a-5d5735eb13e6",
+      "reviewer_id": "0d9b2a02-cad0-4f29-bb3e-bcc671545b22",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-14T00:15:39.992Z"
+    },
+    {
+      "id": "c3f79d95-34f3-46b2-9728-15952725ac00",
+      "submission_id": "35b29d42-7e99-415a-a167-1efe37fb4dba",
+      "reviewer_id": "0d9b2a02-cad0-4f29-bb3e-bcc671545b22",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-14T00:17:45.554Z"
+    },
+    {
+      "id": "39fc3ed6-208a-4e60-87f8-2bd430bfbefd",
+      "submission_id": "1dd7dadf-a414-47bd-9202-462dbb7792ca",
+      "reviewer_id": "d4890a5a-b18c-4d00-a695-d6fb0dad5de0",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-14T00:27:49.896Z"
+    },
+    {
+      "id": "acb66393-54db-4d17-a6eb-9b2a53613586",
+      "submission_id": "35b29d42-7e99-415a-a167-1efe37fb4dba",
+      "reviewer_id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-14T00:28:09.637Z"
+    },
+    {
+      "id": "a3947e56-694a-430b-999f-89566eb0fedb",
+      "submission_id": "41d076f3-950a-4c6a-be6a-5d5735eb13e6",
+      "reviewer_id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-14T00:28:11.971Z"
+    },
+    {
+      "id": "5578ecf2-3106-4c05-aa21-541d8cb53849",
+      "submission_id": "6b5d5ff2-b84a-4ec6-a335-662079146e39",
+      "reviewer_id": "0d9b2a02-cad0-4f29-bb3e-bcc671545b22",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-14T01:06:37.163Z"
+    },
+    {
+      "id": "19164418-7a79-4694-ad5e-6f2008575ddb",
+      "submission_id": "6b5d5ff2-b84a-4ec6-a335-662079146e39",
+      "reviewer_id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "action": "approved",
+      "comment": "",
+      "created_at": "2026-03-14T02:24:52.965Z"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "f936732e-3a63-476f-b4c4-038124667a3c",
+      "design_id": "b206b185-a736-4d0d-a290-8fa7f547847c",
+      "submission_id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "reviewer_id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "x": 0.6629874502601775,
+      "y": 0.22400000113028068,
+      "comment": "Check the logo size.",
+      "number": 1,
+      "created_at": "2026-03-14T00:06:28.161Z"
+    },
+    {
+      "id": "b0d8740c-b03b-4c2e-a557-a64da17ab536",
+      "design_id": "b206b185-a736-4d0d-a290-8fa7f547847c",
+      "submission_id": "9c653d4f-eba1-42d8-87a1-9ba0583ad740",
+      "reviewer_id": "eef489f8-ef45-43cb-ba5c-0eabbfcbe13f",
+      "x": 0.39628071347079613,
+      "y": 0.5647407418710214,
+      "comment": "See if the Product is correctly shown in the AI generated image.",
+      "number": 2,
+      "created_at": "2026-03-14T00:06:51.018Z"
+    }
+  ]
+}

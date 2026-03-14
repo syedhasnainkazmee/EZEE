@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Backgrounds */
+  --p-bg:              #FBFBF9;
+  --p-surface:         #FFFFFF;
+  --p-surface-raised:  #FFFFFF;
+
+  /* Navigation */
+  --p-nav:             #1C1917;
+  --p-nav-border:      rgba(255,255,255,0.08);
+
+  /* Text */
+  --p-text:            #1C1917;
+  --p-text-secondary:  #57534E;
+  --p-text-tertiary:   #78716C;
+  --p-text-quaternary: #A8A29E;
+
+  /* Borders */
+  --p-border:          #EAE5E0;
+  --p-border-strong:   #D6D3D1;
+
+  /* Accent — Premium Terracotta */
+  --p-accent:          #E05236;
+  --p-accent-hover:    #BF4027;
+  --p-accent-soft:     rgba(224, 82, 54, 0.08);
+  --p-accent-soft-h:   rgba(224, 82, 54, 0.14);
+
+  /* Semantic */
+  --p-success:         #10B981;
+  --p-success-soft:    rgba(16, 185, 129, 0.1);
+  --p-success-text:    #047857;
+
+  --p-warning:         #F59E0B;
+  --p-warning-soft:    rgba(245, 158, 11, 0.1);
+  --p-warning-text:    #B45309;
+
+  --p-error:           #EF4444;
+  --p-error-soft:      rgba(239, 68, 68, 0.08);
+  --p-error-text:      #B91C1C;
+
+  /* Fill */
+  --p-fill:            #F5F5F4;
+  --p-fill-hover:      #E7E5E4;
+
+  /* Dark surface (review page) */
+  --p-dark:            #1C1917;
+  --p-dark-surface:    #292524;
+  --p-dark-surface-2:  #44403C;
+  --p-dark-border:     rgba(255,255,255,0.08);
+  --p-dark-text:       rgba(255,255,255,0.9);
+  --p-dark-text-2:     rgba(255,255,255,0.5);
+  --p-dark-text-3:     rgba(255,255,255,0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+body {
+  background: var(--p-bg);
+  color: var(--p-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Headings use the new Display font (Outfit) */
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Refined scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--p-border-strong); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--p-text-quaternary); }
+
+/* Focus rings */
+:focus-visible {
+  outline: 2px solid var(--p-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Smooth transitions */
+* { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }

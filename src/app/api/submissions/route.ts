@@ -1,0 +1,32 @@
+import { NextResponse } from 'next/server'
+import { getAllSubmissions, createSubmission, updateTaskStatus, getTask, getUserById } from '@/lib/db'
+import { sendTaskInReviewEmail } from '@/lib/email'
+
+export async function GET() {
+  return NextResponse.json({ submissions: getAllSubmissions() })
+}
+
+export async function POST(req: Request) {
+  const { title, description, workflow_id, task_id } = await req.json()
+  if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+  if (!workflow_id) return NextResponse.json({ error: 'workflow_id is required' }, { status: 400 })
+  const submission = createSubmission(title.trim(), description?.trim() ?? '', workflow_id, task_id)
+
+  if (task_id) {
+    updateTaskStatus(task_id, 'in_review')
+    const task = getTask(task_id)
+    if (task && task.assignee_id) {
+      const user = getUserById(task.assignee_id)
+      if (user) {
+        sendTaskInReviewEmail({
+          to: user.email,
+          assigneeName: user.name,
+          taskTitle: task.title,
+          submissionTitle: submission.title
+        }).catch(console.error)
+      }
+    }
+  }
+
+  return NextResponse.json({ submission }, { status: 201 })
+}
