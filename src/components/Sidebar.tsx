@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import ProcessLogo from './ProcessLogo'
 import { useAuth } from './AuthProvider'
 
-const HIDDEN_PATHS = ['/review/', '/login', '/setup', '/accept-invite', '/onboarding']
+const HIDDEN_PATHS = ['/review/', '/login', '/setup', '/accept-invite', '/onboarding', '/landing']
 
 function useBadges() {
   const [unread, setUnread] = useState(0)
