@@ -79,22 +79,22 @@ export default function SubmitPage() {
       const { submission, error: e } = await res.json()
       if (e) throw new Error(e)
 
-      const uploaded = []
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i]
-        const ext = f.file.name.split('.').pop() || 'png'
-        const blob = await upload(`designs/${crypto.randomUUID()}.${ext}`, f.file, {
-          access: 'public',
-          handleUploadUrl: '/api/upload',
+      const uploaded = await Promise.all(
+        files.map(async (f, i) => {
+          const ext = f.file.name.split('.').pop() || 'png'
+          const blob = await upload(`designs/${crypto.randomUUID()}.${ext}`, f.file, {
+            access: 'public',
+            handleUploadUrl: '/api/upload',
+          })
+          return {
+            blobUrl: blob.url,
+            originalName: f.file.name,
+            variationLabel: LABELS[i],
+            orderIndex: i,
+            version: submission.version,
+          }
         })
-        uploaded.push({
-          blobUrl: blob.url,
-          originalName: f.file.name,
-          variationLabel: LABELS[i],
-          orderIndex: i,
-          version: submission.version,
-        })
-      }
+      )
 
       const saveRes = await fetch('/api/designs', {
         method: 'POST',

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { addDesign, getSubmission } from '@/lib/db'
+import { getSubmission } from '@/lib/db'
+import { randomUUID } from 'crypto'
+import { db, designs as designsTable } from '@/lib/schema'
+
+export const maxDuration = 60
 
 type DesignInput = {
   blobUrl: string
@@ -20,18 +24,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
   }
 
-  const inserted = []
-  for (const d of designs as DesignInput[]) {
-    const design = await addDesign({
-      submission_id: submissionId,
-      filename: d.blobUrl,
-      original_name: d.originalName,
-      variation_label: d.variationLabel,
-      order_index: d.orderIndex,
-      version: d.version,
-    })
-    inserted.push(design)
-  }
+  const rows = (designs as DesignInput[]).map(d => ({
+    id:              randomUUID(),
+    submission_id:   submissionId,
+    filename:        d.blobUrl,
+    original_name:   d.originalName,
+    variation_label: d.variationLabel,
+    order_index:     d.orderIndex,
+    version:         d.version,
+  }))
 
-  return NextResponse.json({ designs: inserted }, { status: 201 })
+  await db.insert(designsTable).values(rows).run()
+
+  return NextResponse.json({ designs: rows }, { status: 201 })
 }
