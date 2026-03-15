@@ -3,6 +3,8 @@ import { useState, useEffect, FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 
+export const dynamic = 'force-dynamic'
+
 type Invitation = {
   id: string; email: string; role: string
   used: boolean; expires_at: string; created_at: string
