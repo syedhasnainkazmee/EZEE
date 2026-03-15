@@ -17,6 +17,7 @@ import {
   subtasks        as subtasksTable,
   task_attachments as attachmentsTable,
   notifications   as notificationsTable,
+  org_integrations as integrationsTable,
 } from './schema'
 import { cacheGet, cacheSet, cacheClear, cacheDelete, CK } from './cache'
 
@@ -780,6 +781,38 @@ export async function resetWorkspaceData(): Promise<void> {
   await db.delete(projectsTable).run()
   await db.delete(notificationsTable).run()
   cacheClear('')
+}
+
+// ── Integrations ───────────────────────────────────────────────────────────
+
+export type OrgIntegration = {
+  id: string; org_id: string; tool_id: string
+  connected_by: string; connected_at: string
+}
+
+export async function getOrgIntegrations(org_id: string): Promise<OrgIntegration[]> {
+  return await db.select().from(integrationsTable)
+    .where(eq(integrationsTable.org_id, org_id))
+    .all() as OrgIntegration[]
+}
+
+export async function connectIntegration(org_id: string, tool_id: string, user_id: string): Promise<OrgIntegration> {
+  const existing = await db.select().from(integrationsTable)
+    .where(and(eq(integrationsTable.org_id, org_id), eq(integrationsTable.tool_id, tool_id)))
+    .get() as OrgIntegration | undefined
+  if (existing) return existing
+  const row: OrgIntegration = {
+    id: randomUUID(), org_id, tool_id, connected_by: user_id,
+    connected_at: new Date().toISOString(),
+  }
+  await db.insert(integrationsTable).values(row).run()
+  return row
+}
+
+export async function disconnectIntegration(org_id: string, tool_id: string): Promise<void> {
+  await db.delete(integrationsTable)
+    .where(and(eq(integrationsTable.org_id, org_id), eq(integrationsTable.tool_id, tool_id)))
+    .run()
 }
 
 // ── Backward-compatible aliases (used by existing API routes) ──────────────

@@ -146,6 +146,14 @@ export const annotations = sqliteTable('annotations', {
   created_at:    text('created_at').notNull(),
 })
 
+export const org_integrations = sqliteTable('org_integrations', {
+  id:           text('id').primaryKey(),
+  org_id:       text('org_id').notNull(),
+  tool_id:      text('tool_id').notNull(),       // e.g. 'google-drive', 'figma'
+  connected_by: text('connected_by').notNull(),  // user id who connected it
+  connected_at: text('connected_at').notNull(),
+})
+
 export const notifications = sqliteTable('notifications', {
   id:         text('id').primaryKey(),
   user_id:    text('user_id').notNull(),
