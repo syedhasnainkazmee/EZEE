@@ -50,6 +50,12 @@ export default function ReviewPage() {
 
   useEffect(() => { load() }, [token])
 
+  // Poll every 15s so reviewers see newly assigned submissions without refresh
+  useEffect(() => {
+    const id = setInterval(load, 15_000)
+    return () => clearInterval(id)
+  }, [token])
+
   async function submitReview(submissionId: string, action: 'approved' | 'changes_requested') {
     const comment = comments[submissionId] ?? ''
     if (action === 'changes_requested' && !comment.trim()) {

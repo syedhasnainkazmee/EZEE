@@ -61,6 +61,25 @@ export default function SubmissionDetail() {
 
   useEffect(() => { load() }, [id])
 
+  // Real-time status updates via SSE
+  useEffect(() => {
+    if (data?.submission?.status === 'approved') return
+    let es: EventSource | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    function connect() {
+      es = new EventSource(`/api/events?submissionId=${id}`)
+      es.addEventListener('submission', () => { load() })
+      es.onerror = () => {
+        es?.close(); es = null
+        timer = setTimeout(connect, 3_000)
+      }
+    }
+
+    connect()
+    return () => { es?.close(); if (timer) clearTimeout(timer) }
+  }, [id, data?.submission?.status])
+
   async function sendForReview() {
     setSending(true)
     const res = await fetch(`/api/submissions/${id}/send`, { method: 'POST' })

@@ -12,30 +12,31 @@ function useBadges() {
   const [pendingReviews, setPendingReviews] = useState(0)
 
   useEffect(() => {
-    let cancelled = false
-    async function poll() {
-      try {
-        const [notifRes, reviewRes] = await Promise.all([
-          fetch('/api/notifications?unread=true'),
-          fetch('/api/my/reviews'),
-        ])
-        if (cancelled) return
-        if (notifRes.ok) {
-          const d = await notifRes.json()
-          if (!cancelled) setUnread(d.unread_count ?? 0)
-        }
-        if (reviewRes.ok) {
-          const d = await reviewRes.json()
-          const pending = (d.reviews ?? []).filter(
-            (r: any) => r.my_action === null && r.status === 'in_review'
-          ).length
-          if (!cancelled) setPendingReviews(pending)
-        }
-      } catch { /* non-critical */ }
+    let es: EventSource | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+    function connect() {
+      es = new EventSource('/api/events')
+
+      es.addEventListener('badges', (e: MessageEvent) => {
+        const data = JSON.parse(e.data)
+        setUnread(data.unread ?? 0)
+        setPendingReviews(data.pending ?? 0)
+      })
+
+      es.onerror = () => {
+        es?.close()
+        es = null
+        reconnectTimer = setTimeout(connect, 3_000)
+      }
     }
-    poll()
-    const id = setInterval(poll, 60_000)
-    return () => { cancelled = true; clearInterval(id) }
+
+    connect()
+
+    return () => {
+      es?.close()
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+    }
   }, [])
 
   return { unread, pendingReviews }
