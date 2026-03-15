@@ -1,4 +1,5 @@
 'use client'
+import { upload } from '@vercel/blob/client'
 import { useState, useRef, DragEvent, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -77,12 +78,21 @@ export default function SubmitPage() {
       })
       const { submission, error: e } = await res.json()
       if (e) throw new Error(e)
-      const form = new FormData()
-      form.append('submissionId', submission.id)
-      files.forEach(f => form.append('files', f.file))
-      const up = await fetch('/api/upload', { method: 'POST', body: form })
-      const upData = await up.json()
-      if (upData.error) throw new Error(upData.error)
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]
+        const ext = f.file.name.split('.').pop() || 'png'
+        await upload(`designs/${crypto.randomUUID()}.${ext}`, f.file, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+          clientPayload: JSON.stringify({
+            submissionId: submission.id,
+            orderIndex: i,
+            variationLabel: LABELS[i],
+            originalName: f.file.name,
+            version: submission.version,
+          }),
+        })
+      }
       router.push(`/submission/${submission.id}`)
     } catch (e: any) {
       setError(e.message || 'Something went wrong.')

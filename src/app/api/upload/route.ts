@@ -1,49 +1,32 @@
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { NextResponse } from 'next/server'
-import { getSubmission, addDesign, getDesignCount } from '@/lib/db'
-import { put } from '@vercel/blob'
-import { randomUUID } from 'crypto'
-import path from 'path'
+import { addDesign } from '@/lib/db'
 
-export async function POST(req: Request) {
-  const formData = await req.formData()
-  const submissionId = formData.get('submissionId') as string
-  const files = formData.getAll('files') as File[]
-
-  if (!submissionId || files.length === 0) {
-    return NextResponse.json({ error: 'Missing submissionId or files' }, { status: 400 })
-  }
-  const submission = await getSubmission(submissionId)
-  if (!submission) {
-    return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
-  }
-
+export async function POST(request: Request) {
+  const body = await request.json() as HandleUploadBody
   try {
-    const currentCount = await getDesignCount(submissionId)
-    const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-    const inserted = []
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const ext = path.extname(file.name) || '.png'
-      const filename = `${randomUUID()}${ext}`
-
-      const blob = await put(`designs/${filename}`, file, { access: 'public' })
-
-      const orderIndex = currentCount + i
-      const variationLabel = labels[orderIndex] ?? `V${orderIndex + 1}`
-
-      const design = await addDesign({
-        submission_id: submissionId,
-        filename: blob.url,
-        original_name: file.name,
-        variation_label: variationLabel,
-        order_index: orderIndex,
-        version: submission.version,
-      })
-      inserted.push(design)
-    }
-
-    return NextResponse.json({ designs: inserted }, { status: 201 })
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (_pathname, clientPayload) => {
+        return {
+          allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'],
+          tokenPayload: clientPayload ?? '',
+        }
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        const { submissionId, orderIndex, variationLabel, originalName, version } = JSON.parse(tokenPayload ?? '{}')
+        await addDesign({
+          submission_id: submissionId,
+          filename: blob.url,
+          original_name: originalName,
+          variation_label: variationLabel,
+          order_index: orderIndex,
+          version,
+        })
+      },
+    })
+    return NextResponse.json(jsonResponse)
   } catch (err: any) {
     console.error('[upload]', err)
     return NextResponse.json({ error: err?.message ?? 'Upload failed' }, { status: 500 })
