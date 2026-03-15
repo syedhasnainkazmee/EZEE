@@ -7,17 +7,18 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const userId = (req as any).headers.get('x-user-id') ?? null
   const { title, description, workflow_id, task_id } = await req.json()
   if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
   if (!workflow_id) return NextResponse.json({ error: 'workflow_id is required' }, { status: 400 })
-  const submission = createSubmission(title.trim(), description?.trim() ?? '', workflow_id, task_id)
+  const submission = createSubmission(title.trim(), description?.trim() ?? '', workflow_id, task_id, userId)
 
   if (task_id) {
     updateTaskStatus(task_id, 'in_review')
     const task = getTask(task_id)
     if (task && task.assignee_id) {
       const user = getUserById(task.assignee_id)
-      if (user) {
+      if (user && user.notify_email) {
         sendTaskInReviewEmail({
           to: user.email,
           assigneeName: user.name,

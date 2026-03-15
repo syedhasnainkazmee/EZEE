@@ -630,6 +630,10 @@ export function getReviews(submission_id: string): (Review & { reviewer: User | 
     .sort((a, b) => (a.step?.step ?? 0) - (b.step?.step ?? 0))
 }
 
+export function clearUserReviewCache(userId: string) {
+  cacheDelete(CK.reviews(userId))
+}
+
 export function upsertReview(
   submission_id: string, reviewer_id: string, version: number,
   action: 'approved' | 'changes_requested', comment: string,
@@ -686,8 +690,14 @@ export function getReviewsByUserStep(user_id: string) {
   const result = relevant
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .map(sub => {
-      const myStep   = mySteps.find(s => s.workflow_id === sub.workflow_id)!
-      const myReview = myReviews.find(r => r.submission_id === sub.id)
+      const myStep = mySteps.find(s => s.workflow_id === sub.workflow_id)!
+      const isActuallyPending = sub.status === 'in_review' && sub.current_step === myStep.step
+      const myReviewForVersion = myReviews.find(r => r.submission_id === sub.id && r.version === sub.version)
+      const myLatestReview = myReviews
+        .filter(r => r.submission_id === sub.id)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+      // Only show as pending (null action) when submission is genuinely at this user's step
+      const myReview = isActuallyPending ? myReviewForVersion : myLatestReview
 
       const subDesigns     = allDesigns.filter(d => d.submission_id === sub.id).sort((a, b) => a.order_index - b.order_index)
       const subAnnotations = allAnnotations.filter(a => a.submission_id === sub.id)

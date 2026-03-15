@@ -58,85 +58,86 @@ function AcceptInviteContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-p-bg flex items-center justify-center">
+      <div className="flex-1 bg-p-bg flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-p-accent border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-p-bg flex items-center justify-center px-4">
+    <div className="flex-1 bg-p-bg flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-10">
           <ProcessLogo height={36} />
         </div>
 
-        <div className="bg-p-surface rounded-3xl border border-p-border shadow-card p-8">
+        <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">
           {error && !info ? (
             <div className="text-center py-4">
-              <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-error">
+              <div className="w-16 h-16 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-error">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
-              <h2 className="font-display text-xl font-semibold text-p-text mb-2">Invalid Invitation</h2>
-              <p className="text-[14px] text-p-secondary">{error}</p>
+              <h2 className="font-display text-2xl font-semibold text-p-text mb-2">Invalid Invitation</h2>
+              <p className="text-[15px] text-p-secondary">{error}</p>
             </div>
           ) : (
             <>
               <div className="mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-p-accent/10 flex items-center justify-center mb-4">
-                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-accent">
+                <div className="w-14 h-14 rounded-3xl bg-p-accent/10 flex items-center justify-center mb-5 shadow-sm">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-accent">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76"/>
                   </svg>
                 </div>
-                <h1 className="font-display text-2xl font-semibold text-p-text mb-1">You&apos;re invited!</h1>
-                <p className="text-[14px] text-p-secondary">
+                <h1 className="font-display text-2xl font-semibold text-p-text mb-1.5">You&apos;re invited!</h1>
+                <p className="text-[15px] text-p-secondary">
                   Join <strong>{info?.org_name}</strong> as a <strong>{info?.role}</strong>
                 </p>
                 {info?.email && (
-                  <div className="mt-3 inline-flex items-center gap-1.5 bg-p-fill border border-p-border rounded-xl px-3 py-1.5">
-                    <span className="text-[12px] text-p-secondary">{info.email}</span>
+                  <div className="mt-3 inline-flex items-center gap-1.5 bg-p-fill border-2 border-p-border rounded-2xl px-4 py-2">
+                    <span className="text-[13px] text-p-secondary">{info.email}</span>
                   </div>
                 )}
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Your name</label>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Your name</label>
                   <input
                     type="text" value={name} onChange={e => setName(e.target.value)}
                     placeholder="Jane Smith" required
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all"
+                    className="w-full bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Create password</label>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Create password</label>
                   <input
                     type="password" value={password} onChange={e => setPassword(e.target.value)}
                     placeholder="At least 8 characters" required minLength={8}
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all"
+                    className="w-full bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Confirm password</label>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Confirm password</label>
                   <input
                     type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
                     placeholder="Repeat password" required
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all"
+                    className="w-full bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all"
                   />
                 </div>
 
                 {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-[13px] text-red-700">
+                  <div className="bg-red-50 border-2 border-red-200 rounded-3xl px-5 py-4 text-[13px] text-red-700 font-medium">
                     {error}
                   </div>
                 )}
 
                 <button type="submit" disabled={submitting}
-                  className="w-full bg-p-accent hover:bg-p-accent-h disabled:opacity-60 text-white font-semibold py-3.5 rounded-2xl transition-all duration-200 shadow-accent hover:-translate-y-0.5 disabled:transform-none text-[15px]">
+                  className="w-full disabled:opacity-60 text-white font-bold py-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:transform-none text-[15px]"
+                  style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 6px 20px -4px rgba(212,81,46,0.42)' }}>
                   {submitting ? 'Joining…' : 'Join workspace →'}
                 </button>
               </form>
@@ -151,7 +152,7 @@ function AcceptInviteContent() {
 export default function AcceptInvitePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-p-bg flex items-center justify-center">
+      <div className="flex-1 bg-p-bg flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-p-accent border-t-transparent rounded-full animate-spin" />
       </div>
     }>

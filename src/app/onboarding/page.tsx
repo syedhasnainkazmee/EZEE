@@ -86,7 +86,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-p-bg flex flex-col items-center justify-center px-4">
+    <div className="flex-1 bg-p-bg flex flex-col items-center justify-center px-4">
       {/* Progress bar */}
       <div className="w-full max-w-xl mb-8">
         <div className="flex items-center justify-between mb-3">
@@ -115,7 +115,7 @@ export default function OnboardingPage() {
       </div>
 
       <div className="w-full max-w-xl">
-        <div className="bg-p-surface rounded-3xl border border-p-border shadow-card p-8">
+        <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">
 
           {/* Step 0: Invite team */}
           {step === 0 && (
@@ -133,12 +133,12 @@ export default function OnboardingPage() {
                       type="email" value={email}
                       onChange={e => setInviteEmails(arr => arr.map((v, j) => j === i ? e.target.value : v))}
                       placeholder="colleague@company.com"
-                      className="flex-1 bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all"
+                      className="flex-1 bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all"
                     />
                     {i > 0 && (
                       <button type="button"
                         onClick={() => setInviteEmails(arr => arr.filter((_, j) => j !== i))}
-                        className="w-11 h-11 flex items-center justify-center rounded-2xl bg-p-fill border border-p-border text-p-tertiary hover:text-p-error hover:border-p-error transition-colors">
+                        className="w-12 h-12 flex items-center justify-center rounded-2xl bg-p-fill border-2 border-p-border text-p-tertiary hover:text-p-error hover:border-p-error transition-colors">
                         <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -148,7 +148,7 @@ export default function OnboardingPage() {
                 ))}
                 <button type="button"
                   onClick={() => setInviteEmails(arr => [...arr, ''])}
-                  className="flex items-center gap-2 text-[13px] font-medium text-p-accent hover:text-p-accent-h transition-colors">
+                  className="flex items-center gap-2 text-[13px] font-bold text-p-accent hover:text-p-accent-h transition-colors">
                   <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4"/>
                   </svg>
@@ -157,11 +157,12 @@ export default function OnboardingPage() {
               </div>
 
               <div className="flex gap-3">
-                <button onClick={skip} className="flex-1 bg-p-fill border border-p-border hover:bg-white text-p-text font-semibold py-3.5 rounded-2xl transition-all text-[15px]">
+                <button onClick={skip} className="flex-1 bg-p-fill border-2 border-p-border hover:bg-white text-p-text font-bold py-4 rounded-2xl transition-all text-[15px]">
                   Skip for now
                 </button>
                 <button onClick={handleInvites} disabled={loading}
-                  className="flex-2 bg-p-accent hover:bg-p-accent-h disabled:opacity-60 text-white font-semibold py-3.5 px-8 rounded-2xl transition-all text-[15px] shadow-accent">
+                  className="flex-2 disabled:opacity-60 text-white font-bold py-4 px-8 rounded-2xl transition-all text-[15px] hover:-translate-y-0.5 active:translate-y-0"
+                  style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 6px 20px -4px rgba(212,81,46,0.42)' }}>
                   {loading ? 'Sending…' : 'Send invites →'}
                 </button>
               </div>
@@ -178,24 +179,25 @@ export default function OnboardingPage() {
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Workflow name</label>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Workflow name</label>
                   <input type="text" value={wfName} onChange={e => setWfName(e.target.value)}
                     placeholder="e.g. Social Media Review"
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                    className="w-full bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Description <span className="text-p-tertiary font-normal">(optional)</span></label>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Description <span className="text-p-quaternary font-normal normal-case tracking-normal">(optional)</span></label>
                   <textarea value={wfDesc} onChange={e => setWfDesc(e.target.value)}
                     rows={2} placeholder="Describe what this workflow is for…"
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all resize-none" />
+                    className="w-full bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all resize-none" />
                 </div>
                 <p className="text-[12px] text-p-tertiary">You can add reviewers and steps from the Admin panel after setup.</p>
               </div>
 
               <div className="flex gap-3">
-                <button onClick={skip} className="flex-1 bg-p-fill border border-p-border hover:bg-white text-p-text font-semibold py-3.5 rounded-2xl transition-all text-[15px]">Skip</button>
+                <button onClick={skip} className="flex-1 bg-p-fill border-2 border-p-border hover:bg-white text-p-text font-bold py-4 rounded-2xl transition-all text-[15px]">Skip</button>
                 <button onClick={handleWorkflow} disabled={loading}
-                  className="flex-2 bg-p-accent hover:bg-p-accent-h disabled:opacity-60 text-white font-semibold py-3.5 px-8 rounded-2xl transition-all text-[15px] shadow-accent">
+                  className="flex-2 disabled:opacity-60 text-white font-bold py-4 px-8 rounded-2xl transition-all text-[15px] hover:-translate-y-0.5 active:translate-y-0"
+                  style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 6px 20px -4px rgba(212,81,46,0.42)' }}>
                   {loading ? 'Creating…' : 'Create workflow →'}
                 </button>
               </div>
@@ -212,23 +214,24 @@ export default function OnboardingPage() {
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Project name</label>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Project name</label>
                   <input type="text" value={projName} onChange={e => setProjName(e.target.value)}
                     placeholder="e.g. Q1 Marketing Campaign"
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                    className="w-full bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Description <span className="text-p-tertiary font-normal">(optional)</span></label>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Description <span className="text-p-quaternary font-normal normal-case tracking-normal">(optional)</span></label>
                   <textarea value={projDesc} onChange={e => setProjDesc(e.target.value)}
                     rows={2} placeholder="What is this project for?"
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all resize-none" />
+                    className="w-full bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all resize-none" />
                 </div>
               </div>
 
               <div className="flex gap-3">
-                <button onClick={skip} className="flex-1 bg-p-fill border border-p-border hover:bg-white text-p-text font-semibold py-3.5 rounded-2xl transition-all text-[15px]">Skip</button>
+                <button onClick={skip} className="flex-1 bg-p-fill border-2 border-p-border hover:bg-white text-p-text font-bold py-4 rounded-2xl transition-all text-[15px]">Skip</button>
                 <button onClick={handleProject} disabled={loading}
-                  className="flex-2 bg-p-accent hover:bg-p-accent-h disabled:opacity-60 text-white font-semibold py-3.5 px-8 rounded-2xl transition-all text-[15px] shadow-accent">
+                  className="flex-2 disabled:opacity-60 text-white font-bold py-4 px-8 rounded-2xl transition-all text-[15px] hover:-translate-y-0.5 active:translate-y-0"
+                  style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 6px 20px -4px rgba(212,81,46,0.42)' }}>
                   {loading ? 'Creating…' : 'Create project →'}
                 </button>
               </div>
@@ -238,17 +241,18 @@ export default function OnboardingPage() {
           {/* Step 3: Done */}
           {step === 3 && (
             <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-3xl bg-p-success/10 flex items-center justify-center mx-auto mb-5">
-                <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-success">
+              <div className="w-20 h-20 rounded-3xl bg-p-success/10 flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-success">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
               </div>
               <h2 className="font-display text-2xl font-semibold text-p-text mb-2">You&apos;re all set!</h2>
-              <p className="text-[14px] text-p-secondary mb-8 max-w-sm mx-auto leading-relaxed">
+              <p className="text-[15px] text-p-secondary mb-8 max-w-sm mx-auto leading-relaxed">
                 Your workspace is ready. Start by submitting a design for review, or assign tasks to your team.
               </p>
               <button onClick={finish}
-                className="bg-p-accent hover:bg-p-accent-h text-white font-semibold py-3.5 px-10 rounded-2xl transition-all shadow-accent hover:-translate-y-0.5 text-[15px]">
+                className="text-white font-bold py-4 px-10 rounded-2xl transition-all hover:-translate-y-1 active:translate-y-0 text-[15px]"
+                style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 6px 20px -4px rgba(212,81,46,0.42)' }}>
                 Go to dashboard →
               </button>
             </div>

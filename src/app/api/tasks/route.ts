@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const assignor = userId ? getUserById(userId) : null
     const projects = getAllProjects()
     const project  = projects.find(p => p.id === project_id)
-    if (user && project) {
+    if (user && project && user.notify_email) {
       sendTaskAssignedEmail({
         to: user.email,
         assigneeName: user.name,

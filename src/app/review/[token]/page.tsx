@@ -106,7 +106,7 @@ export default function ReviewPage() {
   const avatarColor = AVATAR_COLORS[(reviewer?.step ?? 1) - 1] ?? '#007AFF'
 
   return (
-    <div className="min-h-screen bg-p-bg flex flex-col lg:flex-row font-sans">
+    <div className="min-h-screen bg-p-bg flex flex-col lg:flex-row">
 
       {/* Annotation canvas (fullscreen modal) */}
       {canvas && canvasSub && canvasDesign && reviewer && (

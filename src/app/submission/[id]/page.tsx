@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import AnnotationCanvas from '@/components/AnnotationCanvas'
+import { useAuth } from '@/components/AuthProvider'
 
 type Design = { id: string; filename: string; original_name: string; variation_label: string; order_index: number; version: number }
 type Reviewer = { id: string; name: string; role: string; focus: string; step: number; token: string }
@@ -40,6 +41,9 @@ export default function SubmissionDetail() {
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [resubmitting, setResubmitting] = useState(false)
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null)
+  const [reviewComment, setReviewComment] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const { user: authUser } = useAuth()
 
   function load() {
     setLoading(true)
@@ -77,6 +81,19 @@ export default function SubmissionDetail() {
     setUploadingFiles(false)
   }
 
+  async function submitReview(action: 'approved' | 'changes_requested', reviewerToken: string) {
+    setSubmittingReview(true)
+    const res = await fetch(`/api/review/${reviewerToken}/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, comment: reviewComment }),
+    })
+    const json = await res.json()
+    if (json.error) alert(json.error)
+    else { setReviewComment(''); load() }
+    setSubmittingReview(false)
+  }
+
   async function handleResubmit(files: FileList | null) {
     if (!files || files.length === 0) return
     setResubmitting(true)
@@ -89,7 +106,7 @@ export default function SubmissionDetail() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-p-bg flex items-center justify-center">
+    <div className="flex-1 bg-p-bg flex items-center justify-center">
       <div className="flex items-center gap-2.5 text-p-tertiary text-sm">
         <svg className="animate-spin" width="16" height="16" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -100,7 +117,7 @@ export default function SubmissionDetail() {
     </div>
   )
   if (!data) return (
-    <div className="min-h-screen bg-p-bg flex items-center justify-center">
+    <div className="flex-1 bg-p-bg flex items-center justify-center">
       <p className="text-p-secondary">Submission not found.</p>
     </div>
   )
@@ -120,8 +137,13 @@ export default function SubmissionDetail() {
   const canvasDesign = canvas !== null ? designs[canvas] : null
   const canvasPins = canvasDesign ? annotations.filter(a => a.design_id === canvasDesign.id) : []
 
+  // Is the logged-in user the current pending reviewer for this version?
+  const myReviewer = isCurrentVersion && submission.status === 'in_review'
+    ? reviewers.find(r => r.id === authUser?.id && r.step === submission.current_step)
+    : null
+
   return (
-    <div className="min-h-screen bg-p-bg">
+    <div className="flex-1 bg-p-bg">
       {canvas !== null && canvasDesign && (
         <AnnotationCanvas
           src={`/uploads/${canvasDesign.filename}`}
@@ -138,23 +160,23 @@ export default function SubmissionDetail() {
       )}
 
       {/* Header */}
-      <header className="bg-p-surface border-b border-p-border sticky top-0 z-10 backdrop-blur-sm bg-white/90">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+      <header className="bg-p-bg/90 border-b-2 border-p-border sticky top-0 z-10 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <Link href="/" className="text-p-quaternary hover:text-p-secondary flex-shrink-0 transition-colors p-1 -ml-1 rounded-lg hover:bg-p-fill">
+            <Link href="/" className="text-p-quaternary hover:text-p-secondary flex-shrink-0 transition-colors p-2 -ml-2 rounded-2xl hover:bg-p-fill">
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
               </svg>
             </Link>
             <span className="text-p-border flex-shrink-0 text-lg font-light">/</span>
             <span className="text-[14px] font-semibold text-p-text truncate">{submission.title}</span>
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold flex-shrink-0 ${st.bg} ${st.text}`}>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide flex-shrink-0 border ${st.bg} ${st.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
               {st.label}
             </span>
             {submission.version > 1 && (
               <select
-                className="ml-2 bg-p-fill border border-p-border text-p-text text-[12px] font-semibold px-2 py-1 rounded-lg focus:outline-none focus:border-p-accent cursor-pointer"
+                className="ml-2 bg-p-fill border-2 border-p-border text-p-text text-[12px] font-bold px-3 py-1.5 rounded-2xl focus:outline-none focus:border-p-accent/60 cursor-pointer"
                 value={viewVersion}
                 onChange={e => {
                   setSelectedVersion(Number(e.target.value))
@@ -172,7 +194,8 @@ export default function SubmissionDetail() {
             <button
               onClick={sendForReview}
               disabled={sending}
-              className="flex items-center gap-2 bg-p-accent hover:bg-p-accent-h disabled:opacity-50 text-white text-[13px] font-semibold px-4 py-2 rounded-full transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex-shrink-0"
+              className="inline-flex items-center gap-2 disabled:opacity-50 text-white text-[13px] font-bold px-5 py-3 rounded-2xl transition-all hover:-translate-y-0.5 active:translate-y-0 flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 4px 14px -3px rgba(212,81,46,0.38)' }}
             >
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
@@ -183,34 +206,34 @@ export default function SubmissionDetail() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="max-w-6xl mx-auto px-8 py-10">
         <div className="grid grid-cols-3 gap-8">
 
           {/* Designs */}
           <div className="col-span-2 space-y-4">
             {submission.description && (
-              <div className="bg-p-surface border border-p-border rounded-2xl px-5 py-4 text-[13px] text-p-secondary leading-relaxed shadow-card">
-                <span className="font-semibold text-p-text">Notes — </span>{submission.description}
+              <div className="bg-white border-2 border-transparent rounded-2xl px-6 py-5 text-[13px] text-p-secondary leading-relaxed shadow-sm">
+                <span className="font-bold text-p-text">Notes — </span>{submission.description}
               </div>
             )}
 
             {designs.length === 0 ? (
-              <div className="bg-p-surface border-2 border-dashed border-p-border rounded-3xl p-20 text-center shadow-card">
-                <div className="w-12 h-12 rounded-2xl bg-p-fill flex items-center justify-center mx-auto mb-3">
-                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-tertiary">
+              <div className="bg-white border-2 border-dashed border-p-border rounded-[3rem] p-24 text-center flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-3xl bg-p-fill flex items-center justify-center mx-auto mb-5 shadow-sm">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-tertiary">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
                 </div>
-                <p className="text-[13px] text-p-tertiary">No designs uploaded yet.</p>
+                <p className="text-[15px] text-p-secondary">No designs uploaded yet.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 {designs.map((design, idx) => {
                   const pinCount = annotations.filter(a => a.design_id === design.id).length
                   return (
                     <div
                       key={design.id}
-                      className="bg-p-surface border border-p-border rounded-2xl overflow-hidden cursor-pointer hover:border-p-accent/40 hover:shadow-card-h transition-all duration-200 group shadow-card"
+                      className="bg-white border-2 border-transparent hover:border-p-border/60 rounded-2xl overflow-hidden cursor-pointer hover:shadow-card transition-all duration-300 group shadow-sm"
                       onClick={() => setCanvas(idx)}
                     >
                       <div className="relative flex items-center justify-center bg-p-bg" style={{ height: '240px' }}>
@@ -221,7 +244,7 @@ export default function SubmissionDetail() {
                         />
                         {/* Hover overlay */}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center">
-                          <span className="opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white shadow-popup text-p-text text-[12px] font-semibold px-4 py-2 rounded-full flex items-center gap-1.5">
+                          <span className="opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white shadow-popup text-p-text text-[12px] font-bold px-4 py-2 rounded-full flex items-center gap-1.5">
                             <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -230,7 +253,7 @@ export default function SubmissionDetail() {
                           </span>
                         </div>
                         {pinCount > 0 && (
-                          <div className="absolute top-3 right-3 bg-p-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                          <div className="absolute top-3 right-3 bg-p-accent text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
                             <svg width="8" height="8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                             </svg>
@@ -238,8 +261,8 @@ export default function SubmissionDetail() {
                           </div>
                         )}
                       </div>
-                      <div className="px-4 py-3 border-t border-p-border flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-p-accent/10 text-p-accent text-[11px] font-bold flex items-center justify-center flex-shrink-0">
+                      <div className="px-5 py-3.5 border-t-2 border-p-border flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-xl bg-p-accent/10 text-p-accent text-[11px] font-bold flex items-center justify-center flex-shrink-0">
                           {design.variation_label}
                         </span>
                         <span className="text-[12px] text-p-tertiary truncate">{design.original_name}</span>
@@ -253,12 +276,12 @@ export default function SubmissionDetail() {
                     className="border-2 border-dashed border-p-border rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-p-accent/50 hover:bg-p-accent-soft/50 transition-all duration-150"
                     style={{ minHeight: '286px' }}
                   >
-                    <div className="w-10 h-10 rounded-2xl bg-p-fill flex items-center justify-center mb-2">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-tertiary">
+                    <div className="w-12 h-12 rounded-2xl bg-p-fill flex items-center justify-center mb-3">
+                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-tertiary">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
                       </svg>
                     </div>
-                    <div className="text-[13px] font-medium text-p-tertiary">{uploadingFiles ? 'Uploading…' : 'Add variation'}</div>
+                    <div className="text-[13px] font-bold text-p-tertiary">{uploadingFiles ? 'Uploading…' : 'Add variation'}</div>
                     <input type="file" multiple accept="image/*" className="hidden"
                       onChange={e => addMoreFiles(e.target.files)} disabled={uploadingFiles} />
                   </label>
@@ -279,8 +302,8 @@ export default function SubmissionDetail() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                     </div>
-                    <div className="text-[14px] font-semibold text-p-nav z-10 mb-1">{resubmitting ? 'Uploading V' + (submission.version + 1) + '…' : 'Upload Version ' + (submission.version + 1)}</div>
-                    <div className="text-[12px] text-p-secondary z-10">Select files to restart review</div>
+                    <div className="text-[14px] font-bold text-p-nav z-10 mb-1">{resubmitting ? 'Uploading V' + (submission.version + 1) + '…' : 'Upload Version ' + (submission.version + 1)}</div>
+                    <div className="text-[13px] text-p-secondary z-10">Select files to restart review</div>
                     <input type="file" multiple accept="image/*" className="hidden"
                       onChange={e => handleResubmit(e.target.files)} disabled={resubmitting} />
                   </label>
@@ -291,7 +314,50 @@ export default function SubmissionDetail() {
 
           {/* Sidebar — Review Chain */}
           <div className="space-y-3">
-            <h2 className="text-[11px] font-semibold text-p-tertiary uppercase tracking-widest">Review Chain</h2>
+            <h2 className="text-[13px] font-bold text-p-tertiary uppercase tracking-widest mb-6 flex items-center gap-3">
+              Review Chain
+              <span className="flex-1 h-px bg-p-border" />
+            </h2>
+
+            {/* Reviewer action panel — shown when the logged-in user is the current pending reviewer */}
+            {myReviewer && (
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-6 shadow-sm mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <p className="text-[11px] font-bold text-amber-800 uppercase tracking-widest">Your Review</p>
+                </div>
+                <p className="text-[13px] text-amber-700 mb-4 leading-relaxed">{myReviewer.focus}</p>
+                <textarea
+                  value={reviewComment}
+                  onChange={e => setReviewComment(e.target.value)}
+                  placeholder="Leave a comment (optional)…"
+                  rows={3}
+                  className="w-full text-[13px] bg-white border-2 border-amber-200 rounded-2xl px-4 py-3 text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-amber-400 resize-none mb-4"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => submitReview('approved', myReviewer.token)}
+                    disabled={submittingReview}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[13px] font-bold py-3.5 rounded-2xl transition-colors"
+                  >
+                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => submitReview('changes_requested', myReviewer.token)}
+                    disabled={submittingReview}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-[13px] font-bold py-3.5 rounded-2xl transition-colors"
+                  >
+                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Request Changes
+                  </button>
+                </div>
+              </div>
+            )}
 
             {reviewers.map((reviewer, i) => {
               const review = reviews.find(r => r.reviewer_id === reviewer.id)
@@ -304,16 +370,17 @@ export default function SubmissionDetail() {
               return (
                 <div
                   key={reviewer.id}
-                  className={`bg-p-surface rounded-2xl border p-4 shadow-card transition-all duration-200
-                    ${isActive  ? 'border-amber-300 shadow-amber-100 shadow-md' : ''}
+                  className={`bg-white rounded-2xl border-2 p-5 shadow-sm transition-all duration-200
+                    ${isActive  ? 'border-amber-300' : ''}
                     ${approved  ? 'border-emerald-200' : ''}
                     ${changes   ? 'border-red-200' : ''}
-                    ${pending   ? 'border-p-border opacity-40' : ''}
+                    ${pending   ? 'border-transparent opacity-40' : ''}
+                    ${!isActive && !approved && !changes && !pending ? 'border-transparent' : ''}
                   `}
                 >
                   <div className="flex items-start gap-3">
                     <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0 text-white`}
+                      className={`w-9 h-9 rounded-2xl flex items-center justify-center text-[13px] font-bold flex-shrink-0 text-white`}
                       style={{ background: approved ? '#34C759' : changes ? '#FF3B30' : isActive ? '#FF9F0A' : AVATAR_COLORS[i % 3] }}
                     >
                       {approved
@@ -323,19 +390,19 @@ export default function SubmissionDetail() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <span className="font-semibold text-[13px] text-p-text">{reviewer.name}</span>
-                        {isActive  && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">Waiting</span>}
-                        {approved  && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">Approved</span>}
-                        {changes   && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">Changes</span>}
+                        <span className="font-bold text-[13px] text-p-text">{reviewer.name}</span>
+                        {isActive  && <span className="text-[10px] bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-bold border border-amber-200">Waiting</span>}
+                        {approved  && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full font-bold border border-emerald-200">Approved</span>}
+                        {changes   && <span className="text-[10px] bg-red-100 text-red-600 px-2.5 py-1 rounded-full font-bold border border-red-200">Changes</span>}
                       </div>
                       <div className="text-[11px] text-p-tertiary">{reviewer.role}</div>
 
-                      <div className="text-[11px] text-p-secondary mt-2 bg-p-fill rounded-xl px-3 py-2 leading-relaxed">
+                      <div className="text-[11px] text-p-secondary mt-2.5 bg-p-bg border border-p-border rounded-2xl px-3 py-2.5 leading-relaxed">
                         {reviewer.focus}
                       </div>
 
                       {review?.comment && (
-                        <div className={`mt-2 text-[11px] rounded-xl px-3 py-2.5 leading-relaxed border-l-2
+                        <div className={`mt-2 text-[11px] rounded-2xl px-3 py-2.5 leading-relaxed border-l-2
                           ${approved ? 'bg-emerald-50 text-emerald-800 border-emerald-400' : 'bg-red-50 text-red-800 border-red-400'}
                         `}>
                           "{review.comment}"
@@ -345,7 +412,7 @@ export default function SubmissionDetail() {
                       {(() => {
                         const count = annotations.filter(a => a.reviewer?.name === reviewer.name).length
                         return count > 0 ? (
-                          <div className="mt-2 text-[11px] text-p-accent font-medium flex items-center gap-1">
+                          <div className="mt-2 text-[11px] text-p-accent font-bold flex items-center gap-1">
                             <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                             </svg>
@@ -361,28 +428,28 @@ export default function SubmissionDetail() {
 
             {/* Status banners (only show if viewing current version) */}
             {isCurrentVersion && submission.status === 'approved' && (
-              <div className="bg-emerald-600 rounded-2xl p-5 text-white shadow-card">
-                <div className="flex items-center gap-2.5 mb-1">
-                  <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+              <div className="bg-emerald-600 rounded-3xl p-6 text-white shadow-sm">
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <div className="w-8 h-8 rounded-2xl bg-white/20 flex items-center justify-center">
                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
                     </svg>
                   </div>
-                  <div className="font-bold text-[15px]">Approved</div>
+                  <div className="font-bold text-[16px]">Approved</div>
                 </div>
-                <div className="text-emerald-100 text-[12px]">All reviewers have signed off on this submission.</div>
+                <div className="text-emerald-100 text-[13px]">All reviewers have signed off on this submission.</div>
               </div>
             )}
             {isCurrentVersion && submission.status === 'changes_requested' && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 shadow-card">
-                <div className="font-bold text-red-700 text-[14px] mb-1">Revisions Needed</div>
-                <div className="text-red-500 text-[12px] leading-relaxed">Update the designs and re-send for review.</div>
+              <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-5">
+                <div className="font-bold text-red-700 text-[15px] mb-1.5">Revisions Needed</div>
+                <div className="text-red-500 text-[13px] leading-relaxed">Upload revised designs using the panel on the left, then click <span className="font-bold">Send for Review</span> to resubmit to the reviewer.</div>
               </div>
             )}
             {isCurrentVersion && submission.status === 'draft' && (
-              <div className="bg-p-fill rounded-2xl border border-p-border p-4 text-[12px] text-p-secondary leading-relaxed">
+              <div className="bg-white border-2 border-p-border rounded-2xl p-5 text-[13px] text-p-secondary leading-relaxed shadow-sm">
                 Upload designs and click{' '}
-                <span className="font-semibold text-p-accent">Send for Review</span>{' '}
+                <span className="font-bold text-p-accent">Send for Review</span>{' '}
                 to start the chain.
               </div>
             )}

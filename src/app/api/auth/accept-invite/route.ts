@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getInvitation, consumeInvitation, createUser, updateUser, getUserByEmail, getUserById, createSession, getOrg } from '@/lib/db'
+import { getInvitation, consumeInvitation, createUser, updateUser, getUserByEmail, getUserById, createSession, getOrg, getAllUsers, createNotification } from '@/lib/db'
 import { hashPassword, createSessionToken, COOKIE_NAME } from '@/lib/auth'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token')
@@ -49,6 +50,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+
+    const org = getOrg(inv.org_id)
+    // Welcome email to new user (always — functional account-creation email)
+    sendWelcomeEmail({
+      to: user.email,
+      name: user.name,
+      orgName: org?.name ?? 'the workspace',
+    }).catch(err => console.error('[email] Failed to send welcome email:', err))
+
+    // In-app notification for all admins that a new member joined
+    const allUsers = getAllUsers()
+    for (const admin of allUsers.filter(u => u.role === 'admin' && u.id !== user!.id)) {
+      createNotification({
+        user_id: admin.id,
+        type: 'invited',
+        title: `New member joined: ${user.name}`,
+        body: `${user.email} has accepted their invitation and joined ${org?.name ?? 'the workspace'}.`,
+        href: null,
+      })
+    }
 
     const { token: jwt, jti, expiresAt } = createSessionToken({
       id: user.id, org_id: user.org_id, role: user.role, name: user.name, email: user.email,

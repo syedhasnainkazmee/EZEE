@@ -17,8 +17,6 @@ type ReviewItem = {
   created_at: string
 }
 
-const AVATAR_COLORS = ['#007AFF', '#5856D6', '#34C759', '#FF9F0A', '#FF2D55']
-
 function fmtDate(s: string) {
   const d = new Date(s), diff = Date.now() - d.getTime()
   if (diff < 60000)    return 'Just now'
@@ -27,133 +25,123 @@ function fmtDate(s: string) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
-function ReviewCard({ item, userToken }: { item: ReviewItem; userToken: string }) {
+function SkeletonRow() {
+  return (
+    <div className="flex items-center gap-4 px-6 py-5 rounded-2xl bg-white border-2 border-transparent shadow-sm animate-pulse mb-3">
+      <div className="w-2.5 h-2.5 rounded-full bg-p-fill flex-shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-4 bg-p-fill rounded-lg w-1/2" />
+        <div className="h-3 bg-p-fill rounded-lg w-1/3" />
+      </div>
+      <div className="h-3.5 bg-p-fill rounded-lg w-20 hidden md:block" />
+      <div className="w-3.5 h-3.5 bg-p-fill rounded flex-shrink-0" />
+    </div>
+  )
+}
+
+function ReviewRow({ item, userToken }: { item: ReviewItem; userToken: string }) {
   const isPending  = item.my_action === null && item.status === 'in_review'
   const isApproved = item.my_action === 'approved'
   const isRevision = item.my_action === 'changes_requested'
 
+  const dotClass = isPending  ? 'bg-amber-400 animate-pulse-soft ring-amber-400/20'
+    : isApproved ? 'bg-emerald-400 ring-emerald-400/20'
+    : isRevision ? 'bg-red-400 ring-red-400/20'
+    : 'bg-stone-300 ring-transparent'
+
   return (
-    <div className={`bg-p-surface rounded-2xl border p-5 mb-3 transition-all duration-200 relative overflow-hidden group ${
-      isPending ? 'border-p-warning/50 hover:border-p-warning shadow-sm' : 'border-p-border hover:border-p-border-strong hover:shadow-card'
-    }`}>
-      {isPending && <div className="absolute left-0 top-0 bottom-0 w-1 bg-p-warning" />}
-      {isApproved && <div className="absolute left-0 top-0 bottom-0 w-1 bg-p-success" />}
-      {isRevision && <div className="absolute left-0 top-0 bottom-0 w-1 bg-p-error" />}
+    <div className={`group flex items-center gap-4 px-6 py-5 rounded-2xl bg-white border-2 shadow-sm transition-all duration-300 mb-3 animate-fade-in
+      ${isPending ? 'border-amber-200/80 hover:border-amber-300' : 'border-transparent hover:border-p-border/60 hover:shadow-card'}`}>
 
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div className="flex-1 min-w-0 md:pl-2">
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            {isPending && (
-              <span className="px-2 py-0.5 rounded-md bg-amber-50 text-[10px] font-bold text-amber-700 uppercase tracking-widest">
-                Awaiting your review
-              </span>
-            )}
-            {isApproved && (
-              <span className="px-2 py-0.5 rounded-md bg-p-success-soft text-[10px] font-bold text-p-success uppercase tracking-widest">
-                You approved
-              </span>
-            )}
-            {isRevision && (
-              <span className="px-2 py-0.5 rounded-md bg-p-error-soft text-[10px] font-bold text-p-error uppercase tracking-widest">
-                You requested changes
-              </span>
-            )}
-            {!isPending && !isApproved && !isRevision && (
-              <span className="px-2 py-0.5 rounded-md bg-p-fill text-[10px] font-bold text-p-tertiary uppercase tracking-widest">
-                In your workflow
-              </span>
-            )}
-          </div>
+      {/* Status dot */}
+      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ring-4 ${dotClass}`} />
 
-          <h3 className="font-display font-semibold text-[16px] text-p-text mb-1 truncate">{item.title}</h3>
-          <p className="text-[12px] text-p-secondary">{item.workflow_name} &middot; Step {item.my_step}</p>
-
-          {item.my_focus && (
-            <div className="mt-3 bg-p-fill rounded-xl px-3 py-2 border border-p-border">
-              <p className="text-[11px] font-semibold text-p-tertiary uppercase tracking-widest mb-0.5">Your focus</p>
-              <p className="text-[13px] text-p-text">{item.my_focus}</p>
-            </div>
-          )}
-
-          {item.my_comment && (
-            <div className="mt-2 text-[13px] text-p-secondary italic border-l-2 border-p-border pl-3">
-              &ldquo;{item.my_comment}&rdquo;
-            </div>
-          )}
-
-          {/* Previous reviews */}
-          {item.previousReviews.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {item.previousReviews.map((r, i) => (
-                <div key={i} className="flex items-center gap-1.5 bg-p-fill border border-p-border rounded-xl px-2.5 py-1.5">
-                  <div className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
-                    style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}>
-                    {r.reviewer?.name[0] ?? '?'}
-                  </div>
-                  <span className="text-[11px] font-medium text-p-text">{r.reviewer?.name ?? 'Unknown'}</span>
-                  {r.action === 'approved' && (
-                    <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-success">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
-                    </svg>
-                  )}
-                  {r.action === 'changes_requested' && (
-                    <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-error">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col items-end gap-3 flex-shrink-0">
-          <span className="text-[11px] text-p-tertiary">{fmtDate(item.created_at)}</span>
-          {item.designs.length > 0 && (
-            <div className="flex -space-x-2">
-              {item.designs.slice(0, 3).map(d => (
-                <div key={d.id} className="w-10 h-10 rounded-xl border-2 border-white bg-p-fill overflow-hidden shadow-sm">
-                  <img src={`/uploads/${d.filename}`} alt="" className="w-full h-full object-cover" />
-                </div>
-              ))}
-              {item.designs.length > 3 && (
-                <div className="w-10 h-10 rounded-xl border-2 border-white bg-p-fill flex items-center justify-center text-[10px] font-bold text-p-tertiary shadow-sm">
-                  +{item.designs.length - 3}
-                </div>
-              )}
-            </div>
-          )}
-          {isPending && (
-            <Link
-              href={`/review/${userToken}`}
-              className="bg-p-accent hover:bg-p-accent-h text-white text-[12px] font-semibold px-4 py-2 rounded-xl transition-colors shadow-accent"
-            >
-              Review now →
-            </Link>
-          )}
-          {!isPending && (
-            <Link
-              href={`/submission/${item.id}`}
-              className="bg-p-fill border border-p-border hover:bg-white text-p-text text-[12px] font-semibold px-4 py-2 rounded-xl transition-colors"
-            >
-              View submission
-            </Link>
-          )}
-        </div>
+      {/* Title + meta */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[14.5px] font-semibold text-p-text truncate">
+          {item.title}
+        </p>
+        <p className="text-[12px] text-p-tertiary truncate mt-0.5">
+          {item.workflow_name} · Step {item.my_step}
+          {item.my_focus ? ` · ${item.my_focus}` : ''}
+        </p>
       </div>
+
+      {/* State badge */}
+      {isPending && (
+        <span className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-100">
+          Awaiting
+        </span>
+      )}
+      {isApproved && (
+        <span className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-100">
+          Approved
+        </span>
+      )}
+      {isRevision && (
+        <span className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide text-red-600 bg-red-50 border border-red-100">
+          Changes
+        </span>
+      )}
+
+      {/* Design thumbnails */}
+      {item.designs.length > 0 && (
+        <div className="flex -space-x-2.5 flex-shrink-0 hidden sm:flex">
+          {item.designs.slice(0, 3).map(d => (
+            <div key={d.id} className="w-9 h-9 rounded-2xl border-2 border-p-bg bg-p-fill overflow-hidden shadow-sm">
+              <img src={`/uploads/${d.filename}`} alt="" className="w-full h-full object-cover" />
+            </div>
+          ))}
+          {item.designs.length > 3 && (
+            <div className="w-9 h-9 rounded-2xl border-2 border-p-bg bg-p-fill flex items-center justify-center text-[10px] font-bold text-p-tertiary shadow-sm">
+              +{item.designs.length - 3}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Date */}
+      <span className="text-[12px] text-p-tertiary flex-shrink-0 hidden md:block tabular-nums">
+        {fmtDate(item.created_at)}
+      </span>
+
+      {/* CTA */}
+      {isPending ? (
+        <Link
+          href={`/review/${userToken}`}
+          onClick={e => e.stopPropagation()}
+          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-bold transition-all text-p-accent bg-p-accent-soft hover:bg-p-accent hover:text-white border-2 border-transparent hover:border-p-accent"
+        >
+          Review →
+        </Link>
+      ) : (
+        <Link
+          href={`/review/${userToken}`}
+          onClick={e => e.stopPropagation()}
+          className="flex-shrink-0 p-2 rounded-xl text-p-quaternary hover:text-p-accent hover:bg-p-fill transition-all"
+        >
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </Link>
+      )}
     </div>
   )
 }
 
 export default function ReviewsPage() {
-  const { user }              = useAuth()
-  const [reviews, setReviews] = useState<ReviewItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const { user }                  = useAuth()
+  const [reviews, setReviews]     = useState<ReviewItem[]>([])
+  const [userToken, setUserToken] = useState<string | null>(null)
+  const [loading, setLoading]     = useState(true)
 
   useEffect(() => {
     fetch('/api/my/reviews')
       .then(r => r.json())
-      .then(d => setReviews(d.reviews ?? []))
+      .then(d => {
+        setReviews(d.reviews ?? [])
+        setUserToken(d.userToken ?? null)
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -161,65 +149,75 @@ export default function ReviewsPage() {
   const reviewed = reviews.filter(r => r.my_action !== null || r.status !== 'in_review')
 
   return (
-    <div className="flex-1 bg-p-bg min-h-screen">
-      <main className="max-w-4xl mx-auto px-8 py-12">
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-p-text">My Reviews</h1>
-          <p className="text-[15px] text-p-secondary mt-1.5">Design submissions waiting for your feedback.</p>
+    <div className="flex-1 bg-p-bg">
+      <main className="max-w-5xl mx-auto px-8 lg:px-12 py-10">
+
+        {/* Page header */}
+        <div className="flex items-start justify-between mb-10">
+          <div>
+            <h1 className="font-display text-4xl font-semibold tracking-tight text-p-text leading-tight">
+              My Reviews
+            </h1>
+            <p className="text-[15px] text-p-secondary mt-2.5">Design submissions waiting for your feedback.</p>
+          </div>
+          {pending.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-50 border-2 border-amber-100 text-[12px] font-bold text-amber-700 mt-1">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-soft" />
+              {pending.length} pending
+            </div>
+          )}
         </div>
 
         {loading ? (
-          <div className="space-y-3">
-            {[1,2,3].map(i => (
-              <div key={i} className="bg-p-surface rounded-2xl border border-p-border p-5 animate-pulse h-28" />
-            ))}
+          <div><SkeletonRow /><SkeletonRow /><SkeletonRow /></div>
+        ) : reviews.length === 0 ? (
+          <div className="bg-white border-2 border-dashed border-p-border rounded-[3rem] p-24 text-center max-w-2xl mx-auto mt-8 flex flex-col items-center justify-center">
+            <div className="w-20 h-20 rounded-3xl bg-p-fill flex items-center justify-center mx-auto mb-6 shadow-sm">
+              <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} className="text-p-tertiary">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h2 className="font-display text-2xl font-semibold text-p-text mb-3">No reviews yet</h2>
+            <p className="text-[15px] text-p-secondary max-w-xs mx-auto leading-relaxed">
+              You&apos;ll see design submissions here once you&apos;re added to a review workflow.
+            </p>
           </div>
         ) : (
-          <>
-            {pending.length === 0 && reviewed.length === 0 ? (
-              <div className="bg-p-surface rounded-3xl border border-p-border p-16 text-center">
-                <div className="w-14 h-14 rounded-3xl bg-p-fill flex items-center justify-center mx-auto mb-4">
-                  <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-tertiary">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                </div>
-                <h2 className="font-display text-xl font-semibold text-p-text mb-2">No reviews yet</h2>
-                <p className="text-[14px] text-p-secondary">
-                  You&apos;ll see design submissions here once you&apos;re added to a review workflow.
-                </p>
-              </div>
-            ) : (
-              <>
-                {pending.length > 0 && (
-                  <div className="mb-8">
-                    <div className="flex items-center gap-2 mb-4 px-1">
-                      <span className="w-2 h-2 rounded-full bg-p-warning animate-pulse" />
-                      <h2 className="text-[13px] font-bold uppercase tracking-widest text-p-text">
-                        Awaiting your review
-                      </h2>
-                      <span className="ml-auto text-[11px] font-semibold bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded-md">
-                        {pending.length} pending
-                      </span>
-                    </div>
-                    {pending.map(r => (
-                      <ReviewCard key={r.id} item={r} userToken={user?.id ?? ''} />
-                    ))}
-                  </div>
-                )}
+          <div className="space-y-10">
 
-                {reviewed.length > 0 && (
-                  <div>
-                    <h2 className="text-[13px] font-bold uppercase tracking-widest text-p-secondary mb-4 px-1">
-                      Previously reviewed
-                    </h2>
-                    {reviewed.map(r => (
-                      <ReviewCard key={r.id} item={r} userToken={user?.id ?? ''} />
-                    ))}
-                  </div>
-                )}
-              </>
+            {pending.length > 0 && (
+              <div>
+                <h2 className="text-[13px] font-bold text-p-tertiary uppercase tracking-widest mb-6 flex items-center gap-3">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} className="text-amber-500 flex-shrink-0">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                  Awaiting Your Review
+                  <span className="flex-1 h-px bg-p-border" />
+                  <span className="text-[11px] font-bold bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-full flex-shrink-0">
+                    {pending.length} pending
+                  </span>
+                </h2>
+                {pending.map(r => (
+                  <ReviewRow key={r.id} item={r} userToken={userToken ?? ''} />
+                ))}
+              </div>
             )}
-          </>
+
+            {reviewed.length > 0 && (
+              <div>
+                <h2 className="text-[13px] font-bold text-p-tertiary uppercase tracking-widest mb-6 flex items-center gap-3">
+                  Previously Reviewed
+                  <span className="flex-1 h-px bg-p-border" />
+                  <span className="text-[11px] font-bold text-p-tertiary flex-shrink-0">{reviewed.length}</span>
+                </h2>
+                {reviewed.map(r => (
+                  <ReviewRow key={r.id} item={r} userToken={userToken ?? ''} />
+                ))}
+              </div>
+            )}
+
+          </div>
         )}
       </main>
     </div>

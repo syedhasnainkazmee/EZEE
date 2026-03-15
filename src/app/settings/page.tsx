@@ -125,20 +125,22 @@ export default function SettingsPage() {
     ...(user?.role === 'admin' ? [{ key: 'org', label: 'Organization' }] : []),
   ] as { key: typeof tab; label: string }[]
 
+  const inputCls = "w-full bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text focus:outline-none focus:border-p-accent/60 transition-all"
+
   return (
-    <div className="flex-1 bg-p-bg min-h-screen">
-      <main className="max-w-3xl mx-auto px-8 py-12">
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-p-text">Settings</h1>
-          <p className="text-[15px] text-p-secondary mt-1.5">Manage your account and workspace preferences.</p>
+    <div className="flex-1 bg-p-bg">
+      <main className="max-w-3xl mx-auto px-8 lg:px-12 py-10">
+        <div className="mb-10">
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-p-text leading-tight">Settings</h1>
+          <p className="text-[15px] text-p-secondary mt-2.5">Manage your account and workspace preferences.</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-8 bg-p-fill rounded-2xl p-1 w-fit border border-p-border">
+        <div className="flex items-center gap-1.5 mb-10 bg-p-fill rounded-2xl p-1.5 w-fit border-2 border-p-border">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
-                tab === t.key ? 'bg-p-surface text-p-text shadow-sm border border-p-border' : 'text-p-secondary hover:text-p-text'
+              className={`px-5 py-2.5 rounded-xl text-[13px] font-bold transition-all ${
+                tab === t.key ? 'bg-white text-p-text shadow-sm' : 'text-p-tertiary hover:text-p-secondary'
               }`}>
               {t.label}
             </button>
@@ -148,69 +150,65 @@ export default function SettingsPage() {
         {/* Profile Tab */}
         {tab === 'profile' && (
           <div className="space-y-6">
-            <div className="bg-p-surface rounded-3xl border border-p-border p-6">
-              <h2 className="font-semibold text-[16px] text-p-text mb-5">Personal information</h2>
-              <form onSubmit={saveProfile} className="space-y-4">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 rounded-2xl bg-p-accent flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
+            <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">
+              <h2 className="font-bold text-[18px] text-p-text mb-6">Personal information</h2>
+              <form onSubmit={saveProfile} className="space-y-5">
+                <div className="flex items-center gap-5 mb-8">
+                  <div className="w-20 h-20 rounded-[2rem] bg-p-accent flex items-center justify-center text-white font-bold text-3xl flex-shrink-0">
                     {user?.name[0]?.toUpperCase() ?? '?'}
                   </div>
                   <div>
-                    <p className="font-semibold text-[15px] text-p-text">{user?.name}</p>
-                    <p className="text-[13px] text-p-secondary">{user?.email}</p>
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-p-fill border border-p-border text-[11px] font-semibold text-p-tertiary uppercase tracking-widest">
+                    <p className="font-bold text-[16px] text-p-text">{user?.name}</p>
+                    <p className="text-[14px] text-p-secondary mt-0.5">{user?.email}</p>
+                    <span className="inline-block mt-2 px-3 py-1 rounded-full bg-p-fill border-2 border-p-border text-[11px] font-bold text-p-tertiary uppercase tracking-widest">
                       {user?.role}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Display name</label>
-                  <input type="text" value={name} onChange={e => setName(e.target.value)} required
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Display name</label>
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} required className={inputCls} />
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Email</label>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Email</label>
                   <input type="email" value={user?.email ?? ''} disabled
-                    className="w-full bg-p-fill border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-tertiary cursor-not-allowed" />
-                  <p className="text-[11px] text-p-quaternary mt-1">Email cannot be changed.</p>
+                    className="w-full bg-p-fill border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-tertiary cursor-not-allowed" />
+                  <p className="text-[12px] text-p-quaternary mt-2">Email cannot be changed.</p>
                 </div>
 
                 {profileMsg && (
-                  <p className={`text-[13px] font-medium ${profileMsg === 'Saved!' ? 'text-p-success' : 'text-p-error'}`}>{profileMsg}</p>
+                  <p className={`text-[13px] font-bold ${profileMsg === 'Saved!' ? 'text-p-success' : 'text-p-error'}`}>{profileMsg}</p>
                 )}
 
                 <button type="submit"
-                  className="bg-p-accent hover:bg-p-accent-h text-white font-semibold px-6 py-2.5 rounded-2xl transition-all shadow-accent text-[14px]">
+                  className="bg-p-accent hover:bg-p-accent-h text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-accent text-[14px] hover:-translate-y-0.5 active:translate-y-0">
                   Save changes
                 </button>
               </form>
             </div>
 
-            <div className="bg-p-surface rounded-3xl border border-p-border p-6">
-              <h2 className="font-semibold text-[16px] text-p-text mb-5">Change password</h2>
-              <form onSubmit={changePassword} className="space-y-4">
+            <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">
+              <h2 className="font-bold text-[18px] text-p-text mb-6">Change password</h2>
+              <form onSubmit={changePassword} className="space-y-5">
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Current password</label>
-                  <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} required
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Current password</label>
+                  <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} required className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">New password</label>
-                  <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} required minLength={8}
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">New password</label>
+                  <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} required minLength={8} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Confirm new password</label>
-                  <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Confirm new password</label>
+                  <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required className={inputCls} />
                 </div>
                 {pwMsg && (
-                  <p className={`text-[13px] font-medium ${pwMsg.includes('!') ? 'text-p-success' : 'text-p-error'}`}>{pwMsg}</p>
+                  <p className={`text-[13px] font-bold ${pwMsg.includes('!') ? 'text-p-success' : 'text-p-error'}`}>{pwMsg}</p>
                 )}
                 <button type="submit"
-                  className="bg-p-nav hover:bg-p-accent text-white font-semibold px-6 py-2.5 rounded-2xl transition-all text-[14px]">
+                  className="bg-p-nav hover:bg-p-accent text-white font-bold px-8 py-4 rounded-2xl transition-all text-[14px] hover:-translate-y-0.5 active:translate-y-0">
                   Change password
                 </button>
               </form>
@@ -220,25 +218,25 @@ export default function SettingsPage() {
 
         {/* Notifications Tab */}
         {tab === 'notifications' && (
-          <div className="bg-p-surface rounded-3xl border border-p-border p-6">
-            <h2 className="font-semibold text-[16px] text-p-text mb-5">Notification preferences</h2>
-            <form onSubmit={saveProfile} className="space-y-4">
-              <label className="flex items-center justify-between p-4 rounded-2xl border border-p-border hover:bg-p-fill transition-colors cursor-pointer">
+          <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">
+            <h2 className="font-bold text-[18px] text-p-text mb-6">Notification preferences</h2>
+            <form onSubmit={saveProfile} className="space-y-5">
+              <label className="flex items-center justify-between p-5 rounded-3xl border-2 border-p-border hover:border-p-border-strong transition-colors cursor-pointer bg-p-bg/50">
                 <div>
-                  <p className="text-[14px] font-medium text-p-text">Email notifications</p>
-                  <p className="text-[12px] text-p-secondary mt-0.5">Receive emails for task assignments and review requests</p>
+                  <p className="text-[15px] font-bold text-p-text">Email notifications</p>
+                  <p className="text-[13px] text-p-secondary mt-1">Receive emails for task assignments and review requests</p>
                 </div>
-                <div className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer flex-shrink-0 ${notifyEmail ? 'bg-p-accent' : 'bg-p-fill border border-p-border'}`}
+                <div className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer flex-shrink-0 ml-6 ${notifyEmail ? 'bg-p-accent' : 'bg-p-fill border-2 border-p-border'}`}
                   onClick={() => setNotify(v => !v)}>
-                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow-sm ${notifyEmail ? 'left-6' : 'left-1'}`} />
+                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow-sm ${notifyEmail ? 'left-7' : 'left-1'}`} />
                 </div>
               </label>
 
               {profileMsg && (
-                <p className={`text-[13px] font-medium ${profileMsg === 'Saved!' ? 'text-p-success' : 'text-p-error'}`}>{profileMsg}</p>
+                <p className={`text-[13px] font-bold ${profileMsg === 'Saved!' ? 'text-p-success' : 'text-p-error'}`}>{profileMsg}</p>
               )}
               <button type="submit"
-                className="bg-p-accent hover:bg-p-accent-h text-white font-semibold px-6 py-2.5 rounded-2xl transition-all shadow-accent text-[14px]">
+                className="bg-p-accent hover:bg-p-accent-h text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-accent text-[14px] hover:-translate-y-0.5 active:translate-y-0">
                 Save preferences
               </button>
             </form>
@@ -248,73 +246,71 @@ export default function SettingsPage() {
         {/* Org Tab (admin only) */}
         {tab === 'org' && user?.role === 'admin' && (
           <div className="space-y-6">
-            <div className="bg-p-surface rounded-3xl border border-p-border p-6">
-              <h2 className="font-semibold text-[16px] text-p-text mb-5">Organization settings</h2>
-              <form onSubmit={saveOrg} className="space-y-4">
+            <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">
+              <h2 className="font-bold text-[18px] text-p-text mb-6">Organization settings</h2>
+              <form onSubmit={saveOrg} className="space-y-5">
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">Organization name</label>
-                  <input type="text" value={orgName} onChange={e => setOrgName(e.target.value)} required
-                    className="w-full bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Organization name</label>
+                  <input type="text" value={orgName} onChange={e => setOrgName(e.target.value)} required className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-medium text-p-text mb-1.5">
-                    Allowed email domain
-                    <span className="ml-1 text-p-tertiary font-normal">(Google Workspace)</span>
+                  <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">
+                    Allowed email domain <span className="text-p-quaternary font-normal normal-case">(Google Workspace)</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-p-quaternary text-[14px]">@</span>
+                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-p-quaternary text-[14px]">@</span>
                     <input type="text" value={orgDomain} onChange={e => setOrgDomain(e.target.value.replace('@', ''))}
-                      className="w-full bg-p-bg border border-p-border rounded-2xl pl-8 pr-4 py-3 text-[14px] text-p-text focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                      className="w-full bg-p-bg border-2 border-p-border rounded-2xl pl-9 pr-5 py-3.5 text-[14px] text-p-text focus:outline-none focus:border-p-accent/60 transition-all" />
                   </div>
                 </div>
                 {orgMsg && (
-                  <p className={`text-[13px] font-medium ${orgMsg.includes('!') ? 'text-p-success' : 'text-p-error'}`}>{orgMsg}</p>
+                  <p className={`text-[13px] font-bold ${orgMsg.includes('!') ? 'text-p-success' : 'text-p-error'}`}>{orgMsg}</p>
                 )}
                 <button type="submit"
-                  className="bg-p-accent hover:bg-p-accent-h text-white font-semibold px-6 py-2.5 rounded-2xl transition-all shadow-accent text-[14px]">
+                  className="bg-p-accent hover:bg-p-accent-h text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-accent text-[14px] hover:-translate-y-0.5 active:translate-y-0">
                   Save organization
                 </button>
               </form>
             </div>
 
-            <div className="bg-p-surface rounded-3xl border border-p-border p-6">
-              <h2 className="font-semibold text-[16px] text-p-text mb-5">Invite team member</h2>
+            <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">
+              <h2 className="font-bold text-[18px] text-p-text mb-6">Invite team member</h2>
               <form onSubmit={sendInvite} className="flex gap-3">
                 <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                   placeholder={`colleague@${org?.domain || 'company.com'}`} required
-                  className="flex-1 bg-p-bg border border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent focus:ring-2 focus:ring-p-accent/20 transition-all" />
+                  className="flex-1 bg-p-bg border-2 border-p-border rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-p-accent/60 transition-all" />
                 <select value={inviteRole} onChange={e => setInviteRole(e.target.value as any)}
-                  className="bg-p-bg border border-p-border rounded-2xl px-3 py-3 text-[14px] text-p-text focus:outline-none focus:border-p-accent transition-all">
+                  className="bg-p-bg border-2 border-p-border rounded-2xl px-4 py-3.5 text-[14px] font-semibold text-p-text focus:outline-none focus:border-p-accent/60 transition-all">
                   <option value="member">Member</option>
                   <option value="admin">Admin</option>
                 </select>
                 <button type="submit"
-                  className="bg-p-accent hover:bg-p-accent-h text-white font-semibold px-5 py-3 rounded-2xl transition-all shadow-accent text-[14px] flex-shrink-0">
+                  className="bg-p-accent hover:bg-p-accent-h text-white font-bold px-6 py-3.5 rounded-2xl transition-all shadow-accent text-[14px] flex-shrink-0 hover:-translate-y-0.5 active:translate-y-0">
                   Invite
                 </button>
               </form>
             </div>
 
             {invitations.length > 0 && (
-              <div className="bg-p-surface rounded-3xl border border-p-border p-6">
-                <h2 className="font-semibold text-[16px] text-p-text mb-5">Pending invitations</h2>
-                <div className="space-y-2">
+              <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">
+                <h2 className="font-bold text-[18px] text-p-text mb-6">Pending invitations</h2>
+                <div className="space-y-3">
                   {invitations.filter(i => !i.used).map(inv => (
-                    <div key={inv.id} className="flex items-center justify-between p-3 rounded-2xl border border-p-border bg-p-fill">
+                    <div key={inv.id} className="flex items-center justify-between p-5 rounded-2xl border-2 border-p-border bg-p-bg/50">
                       <div>
-                        <p className="text-[14px] font-medium text-p-text">{inv.email}</p>
-                        <p className="text-[11px] text-p-tertiary mt-0.5">
+                        <p className="text-[15px] font-semibold text-p-text">{inv.email}</p>
+                        <p className="text-[12px] text-p-tertiary mt-1">
                           {inv.role} · Expires {new Date(inv.expires_at).toLocaleDateString()}
                         </p>
                       </div>
                       <button onClick={() => revokeInvite(inv.id)}
-                        className="text-[12px] font-semibold text-p-error hover:text-p-error px-3 py-1.5 rounded-xl hover:bg-p-error-soft transition-colors">
+                        className="text-[12px] font-bold text-p-error hover:text-white hover:bg-p-error px-4 py-2 rounded-xl transition-all border-2 border-p-error/30 hover:border-p-error">
                         Revoke
                       </button>
                     </div>
                   ))}
                   {invitations.filter(i => !i.used).length === 0 && (
-                    <p className="text-[13px] text-p-tertiary">No pending invitations.</p>
+                    <p className="text-[14px] text-p-tertiary">No pending invitations.</p>
                   )}
                 </div>
               </div>

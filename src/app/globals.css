@@ -2,59 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500&display=swap');
 
 :root {
   /* Backgrounds */
-  --p-bg:              #FBFBF9;
-  --p-surface:         #FFFFFF;
+  --p-bg:              #F4F2EE;
+  --p-surface:         #FDFCFB;
   --p-surface-raised:  #FFFFFF;
 
   /* Navigation */
-  --p-nav:             #1C1917;
-  --p-nav-border:      rgba(255,255,255,0.08);
+  --p-nav:             #100F0D;
+  --p-nav-mid:         #1C1916;
+  --p-nav-border:      rgba(255,255,255,0.06);
 
   /* Text */
-  --p-text:            #1C1917;
-  --p-text-secondary:  #57534E;
-  --p-text-tertiary:   #78716C;
-  --p-text-quaternary: #A8A29E;
+  --p-text:            #18160F;
+  --p-text-secondary:  #5C5750;
+  --p-text-tertiary:   #7D7770;
+  --p-text-quaternary: #A8A09A;
 
   /* Borders */
-  --p-border:          #EAE5E0;
-  --p-border-strong:   #D6D3D1;
+  --p-border:          #E5E0D8;
+  --p-border-strong:   #CCC7BF;
 
-  /* Accent — Premium Terracotta */
-  --p-accent:          #E05236;
-  --p-accent-hover:    #BF4027;
-  --p-accent-soft:     rgba(224, 82, 54, 0.08);
-  --p-accent-soft-h:   rgba(224, 82, 54, 0.14);
+  /* Accent — Deep Terracotta */
+  --p-accent:          #D4512E;
+  --p-accent-hover:    #BA3E1E;
+  --p-accent-soft:     rgba(212, 81, 46, 0.08);
+  --p-accent-soft-h:   rgba(212, 81, 46, 0.14);
 
   /* Semantic */
-  --p-success:         #10B981;
-  --p-success-soft:    rgba(16, 185, 129, 0.1);
+  --p-success:         #0EA572;
+  --p-success-soft:    rgba(14, 165, 114, 0.1);
   --p-success-text:    #047857;
 
-  --p-warning:         #F59E0B;
-  --p-warning-soft:    rgba(245, 158, 11, 0.1);
-  --p-warning-text:    #B45309;
+  --p-warning:         #E8882C;
+  --p-warning-soft:    rgba(232, 136, 44, 0.12);
+  --p-warning-text:    #9A5C0A;
 
-  --p-error:           #EF4444;
-  --p-error-soft:      rgba(239, 68, 68, 0.08);
-  --p-error-text:      #B91C1C;
+  --p-error:           #DC3545;
+  --p-error-soft:      rgba(220, 53, 69, 0.08);
+  --p-error-text:      #A01020;
 
   /* Fill */
-  --p-fill:            #F5F5F4;
-  --p-fill-hover:      #E7E5E4;
+  --p-fill:            #EDEBE6;
+  --p-fill-hover:      #E2DED7;
 
-  /* Dark surface (review page) */
-  --p-dark:            #1C1917;
-  --p-dark-surface:    #292524;
-  --p-dark-surface-2:  #44403C;
-  --p-dark-border:     rgba(255,255,255,0.08);
-  --p-dark-text:       rgba(255,255,255,0.9);
-  --p-dark-text-2:     rgba(255,255,255,0.5);
-  --p-dark-text-3:     rgba(255,255,255,0.3);
+  /* Dark surface (review/sidebar) */
+  --p-dark:            #100F0D;
+  --p-dark-surface:    #1C1916;
+  --p-dark-surface-2:  #2E2A26;
+  --p-dark-border:     rgba(255,255,255,0.06);
+  --p-dark-text:       rgba(255,255,255,0.92);
+  --p-dark-text-2:     rgba(255,255,255,0.46);
+  --p-dark-text-3:     rgba(255,255,255,0.26);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,18 +65,18 @@ html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 body {
   background: var(--p-bg);
   color: var(--p-text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
-  letter-spacing: -0.01em;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  letter-spacing: -0.012em;
 }
 
-/* Headings use the new Display font (Outfit) */
+/* Plus Jakarta Sans — headings */
 h1, h2, h3, h4, h5, h6, .font-display {
-  font-family: 'Outfit', sans-serif;
-  letter-spacing: -0.02em;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  letter-spacing: -0.028em;
 }
 
 /* Refined scrollbars */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--p-border-strong); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--p-text-quaternary); }
@@ -87,5 +88,53 @@ h1, h2, h3, h4, h5, h6, .font-display {
   border-radius: 4px;
 }
 
-/* Smooth transitions */
+/* Global easing */
 * { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Noise overlay utility — apply to sidebar and dark panels */
+.with-noise {
+  position: relative;
+}
+.with-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Gradient text — terracotta shimmer */
+.text-gradient {
+  background: linear-gradient(135deg, #D4512E 0%, #FF7A58 60%, #D4512E 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status dot pulse */
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.6; }
+}
+
+/* Kbd shortcut badge */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--p-text-quaternary);
+  background: var(--p-fill);
+  border: 1px solid var(--p-border-strong);
+  border-radius: 5px;
+  padding: 1px 5px;
+  letter-spacing: 0;
+  line-height: 1.6;
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSubmission, updateSubmission, getDesignCount, getWorkflowStep, getTotalSteps } from '@/lib/db'
+import { getSubmission, updateSubmission, getDesignCount, getWorkflowStep, getTotalSteps, getAllUsers, createNotification, getReviews, clearUserReviewCache } from '@/lib/db'
 import { sendReviewEmail } from '@/lib/email'
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
@@ -12,11 +12,27 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'Upload at least one design first' }, { status: 400 })
   }
 
-  const updated = updateSubmission(params.id, { status: 'in_review', current_step: 1 })
+  // For resubmissions (version > 1), route back to the reviewer who requested changes
+  let targetStep = 1
+  if (submission.version > 1) {
+    const allReviews = getReviews(params.id)
+    const changesReview = allReviews.find(
+      r => r.action === 'changes_requested' && r.version === submission.version - 1
+    )
+    if (changesReview?.step?.step != null) {
+      targetStep = changesReview.step.step
+    }
+  }
 
-  // Email step-1 reviewer
-  const step = getWorkflowStep(submission.workflow_id, 1)
+  const updated = updateSubmission(params.id, { status: 'in_review', current_step: targetStep })
+
+  // Bust review cache for all users so the reviewer sees the new pending item immediately
+  getAllUsers().forEach(u => clearUserReviewCache(u.id))
+
+  const step = getWorkflowStep(submission.workflow_id, targetStep)
   const total = getTotalSteps(submission.workflow_id)
+  const isResubmission = submission.version > 1
+
   if (step?.user) {
     sendReviewEmail({
       to: step.user.email,
@@ -25,14 +41,40 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       reviewerFocus: step.focus,
       submissionTitle: submission.title,
       reviewToken: step.user.token,
-      step: 1, totalSteps: total,
+      step: targetStep, totalSteps: total,
     }).then(() => {
-      console.log(`[email] Notified ${step.user!.name} (${step.user!.email}) for step 1`)
+      console.log(`[email] Notified ${step.user!.name} (${step.user!.email}) for step ${targetStep}${isResubmission ? ' (resubmission)' : ''}`)
     }).catch(err => {
-      console.error('[email] Failed to notify step 1 reviewer:', err)
+      console.error('[email] Failed to notify reviewer:', err)
+    })
+    // In-app notification for the target reviewer
+    createNotification({
+      user_id: step.user.id,
+      type: 'review_needed',
+      title: isResubmission
+        ? `Resubmission ready for review: "${submission.title}"`
+        : `Review needed: "${submission.title}"`,
+      body: `Step ${targetStep} of ${total} — ${step.focus}`,
+      href: `/review/${step.user.token}`,
     })
   } else {
-    console.warn('[email] No step-1 reviewer found for workflow', submission.workflow_id)
+    console.warn('[email] No reviewer found for step', targetStep, 'workflow', submission.workflow_id)
+  }
+
+  // In-app notification for all admins
+  const allUsers = getAllUsers()
+  for (const admin of allUsers.filter(u => u.role === 'admin')) {
+    createNotification({
+      user_id: admin.id,
+      type: 'review_needed',
+      title: isResubmission
+        ? `Resubmission in review: "${submission.title}"`
+        : `Submission in review: "${submission.title}"`,
+      body: isResubmission
+        ? `Version ${submission.version} has been submitted for review.`
+        : 'A submission has entered the review pipeline.',
+      href: `/submission/${params.id}`,
+    })
   }
 
   return NextResponse.json({ submission: updated })
