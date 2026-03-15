@@ -522,6 +522,11 @@ export default function SettingsPage() {
                               </span>
                             </p>
                           )}
+                          {integration.connected && integration.id === 'google-drive' && (
+                            <p className="text-[11px] mt-1.5 font-semibold" style={{ color: '#D4512E' }}>
+                              Reconnect to enable Drive uploads
+                            </p>
+                          )}
                         </div>
 
                         {/* Action */}

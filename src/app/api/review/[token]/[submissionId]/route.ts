@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 import {
   getUserByToken, getSubmission, upsertReview, updateSubmission,
   getNextWorkflowStep, getWorkflowStep, getTotalSteps, getAllUsers, getWorkflow,
-  getUserById, createNotification, clearUserReviewCache,
+  getUserById, createNotification, clearUserReviewCache, getDesigns, getTask,
 } from '@/lib/db'
 import { sendReviewEmail, sendFinalApprovalEmail, sendChangesRequestedEmail } from '@/lib/email'
+import { uploadApprovedDesigns } from '@/lib/google-drive'
 
 export async function POST(req: Request, { params }: { params: { token: string; submissionId: string } }) {
   const { action, comment } = await req.json()
@@ -67,6 +68,20 @@ export async function POST(req: Request, { params }: { params: { token: string; 
     } else {
       await updateSubmission(params.submissionId, { status: 'approved', current_step: null })
       console.log(`[email] Submission "${submission.title}" fully approved.`)
+
+      // Upload designs to Google Drive (fire-and-forget — don't block the response)
+      if (user.org_id) {
+        const [designs, task] = await Promise.all([
+          getDesigns(params.submissionId),
+          submission.task_id ? getTask(submission.task_id) : Promise.resolve(null),
+        ])
+        uploadApprovedDesigns({
+          orgId:           user.org_id,
+          submissionTitle: submission.title,
+          taskTitle:       task?.title ?? null,
+          designs,
+        }).catch(err => console.error('[drive] Upload failed:', err))
+      }
 
       const workflow = await getWorkflow(submission.workflow_id)
       // Email admins + reviewers who have notify_email enabled
