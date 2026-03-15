@@ -423,7 +423,50 @@ export default function AdminPage() {
         {/* ── Invitations tab ── */}
         {tab === 'invitations' && (
           <div>
-            <p className="text-[14px] text-p-secondary mb-6">Pending email invitations. Members must accept before they can log in.</p>
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-[14px] text-p-secondary">Pending email invitations. Members must accept before they can log in.</p>
+              <button onClick={() => setShowMemberForm(v => !v)}
+                className="inline-flex items-center gap-2.5 text-white text-[14px] font-bold px-7 py-4 rounded-2xl hover:-translate-y-1 active:translate-y-0 transition-all"
+                style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 6px 20px -4px rgba(212,81,46,0.42)' }}>
+                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Invite Member
+              </button>
+            </div>
+
+            {showMemberForm && (
+              <div className="bg-white border-2 border-p-border rounded-3xl p-8 mb-6 shadow-sm">
+                <h3 className="font-bold text-p-text text-[18px] mb-1">Invite Team Member</h3>
+                <p className="text-[14px] text-p-secondary mb-6">They&apos;ll receive an email invitation to set up their account.</p>
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Work Email *</label>
+                    <input value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                      placeholder="colleague@company.com" type="email" onKeyDown={e => e.key === 'Enter' && addMember()}
+                      className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">Role</label>
+                    <select value={newRole} onChange={e => setNewRole(e.target.value as any)}
+                      className={inputClass}>
+                      <option value="member">Member</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={addMember} disabled={addingMember || !newEmail.trim()}
+                    className="bg-p-accent hover:bg-p-accent-h disabled:opacity-50 text-white text-[14px] font-bold px-7 py-4 rounded-2xl transition-all hover:-translate-y-0.5 active:translate-y-0">
+                    {addingMember ? 'Sending…' : 'Send Invitation'}
+                  </button>
+                  <button onClick={() => setShowMemberForm(false)} className="text-[14px] font-bold text-p-tertiary hover:text-p-text px-5 py-4 transition-colors rounded-2xl hover:bg-p-fill">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
             {invitations.length === 0 ? (
               <div className="bg-white border-2 border-dashed border-p-border rounded-[3rem] p-24 text-center flex flex-col items-center justify-center">
                 <p className="text-[15px] text-p-secondary">No pending invitations. Use the Members tab to invite someone.</p>
