@@ -767,6 +767,21 @@ export async function markAllNotificationsRead(user_id: string): Promise<void> {
   cacheDelete(CK.notifications(user_id))
 }
 
+// ── Workspace Reset ────────────────────────────────────────────────────────
+
+export async function resetWorkspaceData(): Promise<void> {
+  await db.delete(annotationsTable).run()
+  await db.delete(reviewsTable).run()
+  await db.delete(designsTable).run()
+  await db.delete(submissionsTable).run()
+  await db.delete(subtasksTable).run()
+  await db.delete(attachmentsTable).run()
+  await db.delete(tasksTable).run()
+  await db.delete(projectsTable).run()
+  await db.delete(notificationsTable).run()
+  cacheClear('')
+}
+
 // ── Backward-compatible aliases (used by existing API routes) ──────────────
 export const getAllReviewers    = getAllUsers
 export const getReviewerByToken = getUserByToken

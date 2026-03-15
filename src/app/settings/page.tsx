@@ -24,6 +24,11 @@ export default function SettingsPage() {
   const [confirmPw, setConfirmPw] = useState('')
   const [pwMsg, setPwMsg]         = useState('')
 
+  // Reset
+  const [resetConfirm, setResetConfirm] = useState('')
+  const [resetting, setResetting]       = useState(false)
+  const [resetMsg, setResetMsg]         = useState('')
+
   // Org
   const [org, setOrg]               = useState<OrgInfo | null>(null)
   const [invitations, setInvitations] = useState<Invitation[]>([])
@@ -108,6 +113,25 @@ export default function SettingsPage() {
       setOrgMsg(d.error ?? 'Failed to send invite')
     }
     setTimeout(() => setOrgMsg(''), 3000)
+  }
+
+  async function resetWorkspace() {
+    if (resetConfirm !== 'RESET') return
+    setResetting(true)
+    const res = await fetch('/api/admin/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmation: 'RESET' }),
+    })
+    if (res.ok) {
+      setResetMsg('Workspace data cleared.')
+      setResetConfirm('')
+    } else {
+      const d = await res.json()
+      setResetMsg(d.error ?? 'Reset failed')
+    }
+    setResetting(false)
+    setTimeout(() => setResetMsg(''), 5000)
   }
 
   async function revokeInvite(id: string) {
@@ -315,6 +339,53 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+
+            {/* Danger Zone */}
+            <div className="bg-white rounded-3xl border-2 border-red-200 shadow-sm p-8">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="w-10 h-10 rounded-2xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-error" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="font-bold text-[18px] text-p-text">Danger Zone</h2>
+                  <p className="text-[13px] text-p-secondary mt-1">These actions are permanent and cannot be undone.</p>
+                </div>
+              </div>
+
+              <div className="border-2 border-red-100 rounded-2xl p-6 bg-red-50/40">
+                <p className="font-bold text-[15px] text-p-text mb-1">Reset workspace data</p>
+                <p className="text-[13px] text-p-secondary mb-5">
+                  Permanently deletes all submissions, designs, reviews, tasks, projects, and notifications.
+                  Team members, workflows, and org settings are preserved.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-widest">
+                      Type <span className="text-p-error font-mono">RESET</span> to confirm
+                    </label>
+                    <input
+                      type="text"
+                      value={resetConfirm}
+                      onChange={e => setResetConfirm(e.target.value)}
+                      placeholder="RESET"
+                      className="w-full bg-white border-2 border-red-200 rounded-2xl px-5 py-3.5 text-[14px] text-p-text placeholder:text-p-quaternary focus:outline-none focus:border-red-400 transition-all font-mono"
+                    />
+                  </div>
+                  {resetMsg && (
+                    <p className={`text-[13px] font-bold ${resetMsg.includes('cleared') ? 'text-p-success' : 'text-p-error'}`}>{resetMsg}</p>
+                  )}
+                  <button
+                    onClick={resetWorkspace}
+                    disabled={resetting || resetConfirm !== 'RESET'}
+                    className="bg-p-error hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-6 py-3.5 rounded-2xl transition-all text-[14px] hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    {resetting ? 'Resetting…' : 'Reset workspace data'}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
