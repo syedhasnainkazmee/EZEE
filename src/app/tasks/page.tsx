@@ -313,7 +313,7 @@ function TaskCard({ task, users, index, onStatusChange, onRefresh }: {
                 {attachments.map(a => (
                   <div key={a.id} className="flex items-center gap-3 bg-white border-2 border-p-border rounded-2xl p-3 group/att hover:border-p-border-strong transition-colors">
                     {isImage(a.mime_type) ? (
-                      <img src={`/uploads/${a.filename}`} alt={a.original_name}
+                      <img src={a.filename} alt={a.original_name}
                         className="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-p-border" />
                     ) : (
                       <div className="w-10 h-10 rounded-xl bg-p-fill border border-p-border flex items-center justify-center flex-shrink-0">
@@ -327,7 +327,7 @@ function TaskCard({ task, users, index, onStatusChange, onRefresh }: {
                       <p className="text-[11px] text-p-tertiary mt-px">{formatBytes(a.size)}</p>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover/att:opacity-100 transition-all">
-                      <a href={`/uploads/${a.filename}`} target="_blank" rel="noopener"
+                      <a href={a.filename} target="_blank" rel="noopener"
                         className="p-1.5 rounded-lg text-p-tertiary hover:text-p-accent transition-colors">
                         <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>

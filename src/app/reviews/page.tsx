@@ -89,7 +89,7 @@ function ReviewRow({ item, userToken }: { item: ReviewItem; userToken: string })
         <div className="flex -space-x-2.5 flex-shrink-0 hidden sm:flex">
           {item.designs.slice(0, 3).map(d => (
             <div key={d.id} className="w-9 h-9 rounded-2xl border-2 border-p-bg bg-p-fill overflow-hidden shadow-sm">
-              <img src={`/uploads/${d.filename}`} alt="" className="w-full h-full object-cover" />
+              <img src={d.filename} alt="" className="w-full h-full object-cover" />
             </div>
           ))}
           {item.designs.length > 3 && (

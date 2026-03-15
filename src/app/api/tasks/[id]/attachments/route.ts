@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { addTaskAttachment, getTaskAttachments } from '@/lib/db'
+import { put } from '@vercel/blob'
 import { randomUUID } from 'crypto'
-import { writeFile } from 'fs/promises'
 import path from 'path'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -22,13 +22,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const ext = path.extname(file.name)
     const filename = `${randomUUID()}${ext}`
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-    await writeFile(path.join(uploadDir, filename), buffer)
+
+    const blob = await put(`attachments/${filename}`, file, { access: 'public' })
 
     const attachment = await addTaskAttachment({
       task_id: params.id,
-      filename,
+      filename: blob.url,
       original_name: file.name,
       mime_type: file.type,
       size: file.size,

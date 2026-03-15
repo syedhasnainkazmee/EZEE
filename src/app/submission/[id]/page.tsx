@@ -146,7 +146,7 @@ export default function SubmissionDetail() {
     <div className="flex-1 bg-p-bg">
       {canvas !== null && canvasDesign && (
         <AnnotationCanvas
-          src={`/uploads/${canvasDesign.filename}`}
+          src={canvasDesign.filename}
           variationLabel={canvasDesign.variation_label}
           designId={canvasDesign.id}
           submissionId={id}
@@ -238,7 +238,7 @@ export default function SubmissionDetail() {
                     >
                       <div className="relative flex items-center justify-center bg-p-bg" style={{ height: '240px' }}>
                         <img
-                          src={`/uploads/${design.filename}`}
+                          src={design.filename}
                           alt={`Variation ${design.variation_label}`}
                           style={{ maxWidth: '100%', maxHeight: '240px', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block' }}
                         />

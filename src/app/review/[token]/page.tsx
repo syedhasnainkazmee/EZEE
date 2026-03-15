@@ -111,7 +111,7 @@ export default function ReviewPage() {
       {/* Annotation canvas (fullscreen modal) */}
       {canvas && canvasSub && canvasDesign && reviewer && (
         <AnnotationCanvas
-          src={`/uploads/${canvasDesign.filename}`}
+          src={canvasDesign.filename}
           variationLabel={canvasDesign.variation_label}
           designId={canvasDesign.id}
           submissionId={canvasSub.id}
@@ -283,7 +283,7 @@ function ReviewCard({ sub, token, comment, onCommentChange, onApprove, onRequest
                   className="relative bg-p-bg border-2 border-p-border rounded-3xl overflow-hidden flex items-center justify-center group-hover:border-p-accent transition-all duration-300 shadow-sm group-hover:shadow-md aspect-[4/3] w-full"
                 >
                   <img
-                    src={`/uploads/${design.filename}`}
+                    src={design.filename}
                     alt={`Attachment ${design.variation_label}`}
                     className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-[1.03] p-4"
                   />
