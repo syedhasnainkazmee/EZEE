@@ -55,7 +55,8 @@ export type Submission = {
   id: string; title: string; description: string; workflow_id: string
   task_id: string | null; submitted_by: string | null
   status: 'draft' | 'in_review' | 'approved' | 'changes_requested'
-  current_step: number | null; version: number; created_at: string
+  current_step: number | null; version: number
+  drive_folder_url: string | null; created_at: string
 }
 
 export type Design = {
@@ -547,7 +548,7 @@ export async function createSubmission(title: string, description: string, workf
   const sub: Submission = {
     id: randomUUID(), title, description, workflow_id, task_id: task_id ?? null,
     submitted_by: submitted_by ?? null,
-    status: 'draft', current_step: null, version: 1, created_at: new Date().toISOString(),
+    status: 'draft', current_step: null, version: 1, drive_folder_url: null, created_at: new Date().toISOString(),
   }
   await db.insert(submissionsTable).values(sub).run()
   cacheDelete(CK.submissions())

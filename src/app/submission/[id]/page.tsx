@@ -16,6 +16,7 @@ type Annotation = { id: string; design_id: string; x: number; y: number; comment
 type Submission = {
   id: string; title: string; description: string; status: string
   current_step: number | null; created_at: string; version: number
+  drive_folder_url?: string | null
 }
 
 const STATUS: Record<string, { label: string; dot: string; bg: string; text: string }> = {
@@ -457,6 +458,24 @@ export default function SubmissionDetail() {
                   <div className="font-bold text-[16px]">Approved</div>
                 </div>
                 <div className="text-emerald-100 text-[13px]">All reviewers have signed off on this submission.</div>
+                {submission.drive_folder_url && (
+                  <a
+                    href={submission.drive_folder_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 flex items-center gap-2.5 bg-white/15 hover:bg-white/25 transition-colors rounded-2xl px-4 py-3 w-fit"
+                  >
+                    <svg viewBox="0 0 87.3 78" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#fff"/>
+                      <path d="M43.65 25L29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.2 48.5A9.06 9.06 0 000 53h27.5z" fill="#fff"/>
+                      <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z" fill="#fff"/>
+                    </svg>
+                    <span className="text-[13px] font-semibold">View deliverables in Google Drive</span>
+                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} className="opacity-70">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                  </a>
+                )}
               </div>
             )}
             {isCurrentVersion && submission.status === 'changes_requested' && (

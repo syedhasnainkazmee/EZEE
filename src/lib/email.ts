@@ -399,7 +399,7 @@ export async function sendWelcomeEmail(opts: { to: string, name: string, orgName
   } catch (err) { console.error('[email]', err) }
 }
 
-export async function sendFinalApprovalEmail(opts: { to: string, submissionTitle: string, submissionUrl: string }) {
+export async function sendFinalApprovalEmail(opts: { to: string, submissionTitle: string, submissionUrl: string, driveFolderUrl?: string | null }) {
   if (!process.env.RESEND_API_KEY) return
 
   const logoSvg = `<span style="font-family:Arial Black,Impact,sans-serif;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:0.05em;">EZEE</span>`
@@ -442,6 +442,11 @@ export async function sendFinalApprovalEmail(opts: { to: string, submissionTitle
         <div class="cta">
           <a class="btn" href="${opts.submissionUrl}">View Submission &rarr;</a>
         </div>
+        ${opts.driveFolderUrl ? `<div style="margin:8px 0 0;border:1px solid #D1FAE5;border-radius:16px;padding:20px 24px;background:#F0FDF4;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#065F46;letter-spacing:0.06em;margin-bottom:6px;">Final Deliverables on Google Drive</div>
+          <div style="font-size:13px;color:#047857;margin-bottom:14px;">Approved designs have been saved to a shared folder. Anyone with the link can view.</div>
+          <a href="${opts.driveFolderUrl}" style="background:#10B981;color:#fff;text-decoration:none;padding:10px 22px;border-radius:100px;font-size:13px;font-weight:600;display:inline-block;">Open Drive Folder &rarr;</a>
+        </div>` : ''}
       </div>
       <div class="foot">
         <p><strong>EZEE</strong> &nbsp;&middot;&nbsp; Automated workflow</p>

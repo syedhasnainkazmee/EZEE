@@ -21,17 +21,15 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
   }
 }
 
-/** Returns a valid access token, refreshing automatically if expired. */
 async function getValidToken(orgId: string): Promise<string | null> {
   const integration = await getOrgIntegration(orgId, 'google-drive')
   if (!integration?.access_token) return null
 
   const isExpired = integration.token_expires_at
-    ? new Date(integration.token_expires_at) < new Date(Date.now() + 60_000) // 1 min buffer
+    ? new Date(integration.token_expires_at) < new Date(Date.now() + 60_000)
     : false
 
   if (!isExpired) return integration.access_token
-
   if (!integration.refresh_token) return null
 
   const refreshed = await refreshAccessToken(integration.refresh_token)
@@ -50,23 +48,24 @@ async function getValidToken(orgId: string): Promise<string | null> {
 
 // ── Drive API helpers ──────────────────────────────────────────────────────
 
-async function createFolder(accessToken: string, name: string, parentId?: string): Promise<string> {
-  const metadata: Record<string, unknown> = {
-    name,
-    mimeType: 'application/vnd.google-apps.folder',
-    ...(parentId ? { parents: [parentId] } : {}),
-  }
+async function createFolder(accessToken: string, name: string): Promise<string> {
   const res = await fetch('https://www.googleapis.com/drive/v3/files', {
     method:  'POST',
-    headers: {
-      Authorization:  `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(metadata),
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder' }),
   })
   if (!res.ok) throw new Error(`Failed to create folder "${name}": ${await res.text()}`)
   const data = await res.json() as { id: string }
   return data.id
+}
+
+async function setAnyoneCanView(accessToken: string, fileId: string): Promise<void> {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ role: 'reader', type: 'anyone' }),
+  })
+  if (!res.ok) console.error(`[drive] Failed to set permissions: ${await res.text()}`)
 }
 
 async function uploadFile(
@@ -75,20 +74,15 @@ async function uploadFile(
   filename: string,
   fileBuffer: ArrayBuffer,
   mimeType: string,
-): Promise<string> {
+): Promise<void> {
   const metadata = JSON.stringify({ name: filename, parents: [folderId] })
   const boundary = '-------boundary_upload'
-  const delimiter = `\r\n--${boundary}\r\n`
-  const closeDelimiter = `\r\n--${boundary}--`
-
-  const metaPart = `${delimiter}Content-Type: application/json\r\n\r\n${metadata}`
-  const filePart = `${delimiter}Content-Type: ${mimeType}\r\n\r\n`
 
   const body = Buffer.concat([
-    Buffer.from(metaPart),
-    Buffer.from(filePart),
+    Buffer.from(`\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${metadata}`),
+    Buffer.from(`\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`),
     Buffer.from(fileBuffer),
-    Buffer.from(closeDelimiter),
+    Buffer.from(`\r\n--${boundary}--`),
   ])
 
   const res = await fetch(
@@ -103,44 +97,52 @@ async function uploadFile(
     },
   )
   if (!res.ok) throw new Error(`Failed to upload "${filename}": ${await res.text()}`)
-  const data = await res.json() as { id: string }
-  return data.id
 }
 
-// ── Public: upload all designs for an approved submission ──────────────────
+// ── Public ─────────────────────────────────────────────────────────────────
 
+/**
+ * Creates a shared Drive folder, uploads all designs into it, and returns
+ * the shareable folder URL. File uploads happen in the background so they
+ * don't delay the response — only folder creation is awaited.
+ */
 export async function uploadApprovedDesigns(opts: {
   orgId:           string
   submissionTitle: string
   taskTitle:       string | null
   designs:         { filename: string; original_name: string }[]
-}): Promise<void> {
+}): Promise<string | null> {
   const { orgId, submissionTitle, taskTitle, designs } = opts
 
   const accessToken = await getValidToken(orgId)
   if (!accessToken) {
     console.log('[drive] No Google Drive integration for org — skipping upload')
-    return
+    return null
   }
 
-  // Folder name: "Task Name — Submission Title" or just "Submission Title"
   const folderName = taskTitle
     ? `${taskTitle} — ${submissionTitle}`
     : submissionTitle
 
+  // Create folder + make shareable (awaited — we need the URL before returning)
   const folderId = await createFolder(accessToken, folderName)
+  await setAnyoneCanView(accessToken, folderId)
+  const folderUrl = `https://drive.google.com/drive/folders/${folderId}`
+  console.log(`[drive] Created shared folder: ${folderUrl}`)
 
-  await Promise.all(designs.map(async (design) => {
+  // Upload files in the background — don't block the review response
+  Promise.all(designs.map(async (design) => {
     try {
-      // filename is a Vercel Blob URL — fetch its content
       const fileRes = await fetch(design.filename)
-      if (!fileRes.ok) throw new Error(`Could not fetch file: ${design.filename}`)
+      if (!fileRes.ok) throw new Error(`Could not fetch: ${design.filename}`)
       const buffer   = await fileRes.arrayBuffer()
       const mimeType = fileRes.headers.get('content-type') ?? 'image/jpeg'
       await uploadFile(accessToken, folderId, design.original_name, buffer, mimeType)
-      console.log(`[drive] Uploaded "${design.original_name}" to folder "${folderName}"`)
+      console.log(`[drive] Uploaded "${design.original_name}"`)
     } catch (err) {
       console.error(`[drive] Failed to upload "${design.original_name}":`, err)
     }
-  }))
+  })).catch(err => console.error('[drive] Upload batch failed:', err))
+
+  return folderUrl
 }

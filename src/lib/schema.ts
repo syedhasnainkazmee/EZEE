@@ -69,8 +69,9 @@ export const submissions = sqliteTable('submissions', {
   status:       text('status').notNull().default('draft')
                   .$type<'draft' | 'in_review' | 'approved' | 'changes_requested'>(),
   current_step: integer('current_step'),
-  version:      integer('version').notNull().default(1),
-  created_at:   text('created_at').notNull(),
+  version:          integer('version').notNull().default(1),
+  drive_folder_url: text('drive_folder_url'),
+  created_at:       text('created_at').notNull(),
 })
 
 export const projects = sqliteTable('projects', {
