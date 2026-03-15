@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOrgIntegrations, connectIntegration, disconnectIntegration } from '@/lib/db'
+import { getOrgIntegrations, upsertIntegration, disconnectIntegration } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   const orgId = request.headers.get('x-org-id')
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   if (!orgId || !userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { tool_id } = await request.json()
   if (!tool_id) return NextResponse.json({ error: 'tool_id required' }, { status: 400 })
-  const integration = await connectIntegration(orgId, tool_id, userId)
+  const integration = await upsertIntegration({ org_id: orgId, tool_id, connected_by: userId })
   return NextResponse.json({ integration })
 }
 

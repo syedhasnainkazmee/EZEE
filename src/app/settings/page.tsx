@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, FormEvent } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 
 type Invitation = {
@@ -16,12 +17,17 @@ type Integration = {
   category: string
   icon: React.ReactNode
   connected: boolean
-  connectedAs?: string
+  connectedAs?: string   // Google account email
+  connectedName?: string // Google account display name
+  useOAuth?: boolean     // if true, Connect button redirects to OAuth flow
 }
 
 export default function SettingsPage() {
   const { user, refetch }    = useAuth()
+  const router               = useRouter()
+  const searchParams         = useSearchParams()
   const [tab, setTab]        = useState<'profile' | 'notifications' | 'org' | 'integrations'>('profile')
+  const [integrationMsg, setIntegrationMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
   // Profile
   const [name, setName]         = useState(user?.name ?? '')
@@ -47,6 +53,7 @@ export default function SettingsPage() {
       description: 'Import design files directly from Google Drive and share approved assets.',
       category: 'Storage',
       connected: false,
+      useOAuth: true,
       icon: (
         <svg viewBox="0 0 87.3 78" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
           <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
@@ -151,15 +158,38 @@ export default function SettingsPage() {
   useEffect(() => {
     fetch('/api/integrations')
       .then(r => r.ok ? r.json() : { integrations: [] })
-      .then(({ integrations: connected }: { integrations: { tool_id: string }[] }) => {
-        const connectedIds = new Set(connected.map((c: { tool_id: string }) => c.tool_id))
-        setIntegrations(prev => prev.map(i => ({
-          ...i,
-          connected: connectedIds.has(i.id),
-          connectedAs: connectedIds.has(i.id) ? user?.email : undefined,
-        })))
+      .then(({ integrations: connected }: { integrations: { tool_id: string; account_email?: string; account_name?: string }[] }) => {
+        const byId = Object.fromEntries(connected.map(c => [c.tool_id, c]))
+        setIntegrations(prev => prev.map(i => {
+          const row = byId[i.id]
+          return row
+            ? { ...i, connected: true, connectedAs: row.account_email ?? user?.email, connectedName: row.account_name ?? undefined }
+            : { ...i, connected: false, connectedAs: undefined, connectedName: undefined }
+        }))
       })
   }, [user?.email])
+
+  // Handle OAuth callback query params
+  useEffect(() => {
+    const connected = searchParams.get('gdrive_connected')
+    const error     = searchParams.get('gdrive_error')
+    const tabParam  = searchParams.get('tab')
+    if (tabParam === 'integrations') setTab('integrations')
+    if (connected) {
+      setIntegrationMsg({ text: 'Google Drive connected successfully!', ok: true })
+      setTimeout(() => setIntegrationMsg(null), 5000)
+      router.replace('/settings?tab=integrations')
+    } else if (error) {
+      const messages: Record<string, string> = {
+        access_denied:  'Access was denied. Please try again.',
+        invalid_state:  'Security check failed. Please try again.',
+        token_exchange: 'Could not complete sign-in with Google. Please try again.',
+      }
+      setIntegrationMsg({ text: messages[error] ?? 'Something went wrong. Please try again.', ok: false })
+      setTimeout(() => setIntegrationMsg(null), 6000)
+      router.replace('/settings?tab=integrations')
+    }
+  }, [searchParams, router])
 
   async function toggleIntegration(id: string) {
     const item = integrations.find(i => i.id === id)
@@ -170,7 +200,10 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tool_id: id }),
       })
-      setIntegrations(prev => prev.map(i => i.id === id ? { ...i, connected: false, connectedAs: undefined } : i))
+      setIntegrations(prev => prev.map(i => i.id === id ? { ...i, connected: false, connectedAs: undefined, connectedName: undefined } : i))
+    } else if (item.useOAuth) {
+      // For OAuth tools, redirect to the tool-specific auth route
+      window.location.href = `/api/integrations/${id}/auth`
     } else {
       await fetch('/api/integrations', {
         method: 'POST',
@@ -423,6 +456,20 @@ export default function SettingsPage() {
         {/* Integrations Tab */}
         {tab === 'integrations' && (
           <div className="space-y-8">
+            {integrationMsg && (
+              <div className="flex items-center gap-3 px-5 py-4 rounded-2xl text-[13px] font-semibold"
+                style={{
+                  background: integrationMsg.ok ? 'rgba(14,165,114,0.1)' : 'rgba(220,53,69,0.1)',
+                  color: integrationMsg.ok ? '#0EA572' : '#DC3545',
+                  border: `1.5px solid ${integrationMsg.ok ? 'rgba(14,165,114,0.25)' : 'rgba(220,53,69,0.25)'}`,
+                }}>
+                {integrationMsg.ok
+                  ? <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  : <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                }
+                {integrationMsg.text}
+              </div>
+            )}
             <div>
               <p className="text-[14px] text-p-secondary">
                 Connect your favourite tools to streamline your design review workflow.
@@ -467,9 +514,14 @@ export default function SettingsPage() {
                             )}
                           </div>
                           <p className="text-[13px] text-p-secondary leading-relaxed">{integration.description}</p>
-                          {integration.connected && integration.connectedAs && (
+                          {integration.connected && (integration.connectedAs || integration.connectedName) && (
                             <p className="text-[11.5px] text-p-tertiary mt-1.5">
-                              Connected as <span className="font-semibold text-p-secondary">{integration.connectedAs}</span>
+                              Connected as{' '}
+                              <span className="font-semibold text-p-secondary">
+                                {integration.connectedName
+                                  ? `${integration.connectedName} (${integration.connectedAs})`
+                                  : integration.connectedAs}
+                              </span>
                             </p>
                           )}
                         </div>

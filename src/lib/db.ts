@@ -788,6 +788,8 @@ export async function resetWorkspaceData(): Promise<void> {
 export type OrgIntegration = {
   id: string; org_id: string; tool_id: string
   connected_by: string; connected_at: string
+  access_token: string | null; refresh_token: string | null
+  token_expires_at: string | null; account_email: string | null; account_name: string | null
 }
 
 export async function getOrgIntegrations(org_id: string): Promise<OrgIntegration[]> {
@@ -796,14 +798,37 @@ export async function getOrgIntegrations(org_id: string): Promise<OrgIntegration
     .all() as OrgIntegration[]
 }
 
-export async function connectIntegration(org_id: string, tool_id: string, user_id: string): Promise<OrgIntegration> {
-  const existing = await db.select().from(integrationsTable)
+export async function getOrgIntegration(org_id: string, tool_id: string): Promise<OrgIntegration | null> {
+  return await db.select().from(integrationsTable)
     .where(and(eq(integrationsTable.org_id, org_id), eq(integrationsTable.tool_id, tool_id)))
-    .get() as OrgIntegration | undefined
-  if (existing) return existing
+    .get() as OrgIntegration | null ?? null
+}
+
+export async function upsertIntegration(data: {
+  org_id: string; tool_id: string; connected_by: string
+  access_token?: string | null; refresh_token?: string | null
+  token_expires_at?: string | null; account_email?: string | null; account_name?: string | null
+}): Promise<OrgIntegration> {
+  const existing = await getOrgIntegration(data.org_id, data.tool_id)
+  const now = new Date().toISOString()
+  if (existing) {
+    const updated = {
+      connected_by: data.connected_by, connected_at: now,
+      access_token: data.access_token ?? existing.access_token,
+      refresh_token: data.refresh_token ?? existing.refresh_token,
+      token_expires_at: data.token_expires_at ?? existing.token_expires_at,
+      account_email: data.account_email ?? existing.account_email,
+      account_name: data.account_name ?? existing.account_name,
+    }
+    await db.update(integrationsTable).set(updated).where(eq(integrationsTable.id, existing.id)).run()
+    return { ...existing, ...updated }
+  }
   const row: OrgIntegration = {
-    id: randomUUID(), org_id, tool_id, connected_by: user_id,
-    connected_at: new Date().toISOString(),
+    id: randomUUID(), org_id: data.org_id, tool_id: data.tool_id,
+    connected_by: data.connected_by, connected_at: now,
+    access_token: data.access_token ?? null, refresh_token: data.refresh_token ?? null,
+    token_expires_at: data.token_expires_at ?? null,
+    account_email: data.account_email ?? null, account_name: data.account_name ?? null,
   }
   await db.insert(integrationsTable).values(row).run()
   return row
