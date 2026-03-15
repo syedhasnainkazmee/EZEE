@@ -5,6 +5,6 @@ import { setWorkflowSteps } from '@/lib/db'
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const { steps } = await req.json()
   if (!Array.isArray(steps)) return NextResponse.json({ error: 'steps must be an array' }, { status: 400 })
-  const saved = setWorkflowSteps(params.id, steps)
+  const saved = await setWorkflowSteps(params.id, steps)
   return NextResponse.json({ steps: saved })
 }

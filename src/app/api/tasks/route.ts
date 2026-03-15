@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   // Members only see their assigned tasks; admins see all
   const assignee_filter = (userRole === 'member' && userId) ? userId : undefined
-  return NextResponse.json({ tasks: getAllTasks(project_id, assignee_filter) })
+  return NextResponse.json({ tasks: await getAllTasks(project_id, assignee_filter) })
 }
 
 export async function POST(req: NextRequest) {
@@ -20,16 +20,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Title and project_id are required' }, { status: 400 })
   }
 
-  const task = createTask(
+  const task = await createTask(
     project_id, title.trim(), description?.trim() ?? '',
     userId ?? null, assignee_id ?? null,
     { due_date, priority }
   )
 
   if (assignee_id && assignee_id !== userId) {
-    const user    = getUserById(assignee_id)
-    const assignor = userId ? getUserById(userId) : null
-    const projects = getAllProjects()
+    const user    = await getUserById(assignee_id)
+    const assignor = userId ? await getUserById(userId) : null
+    const projects = await getAllProjects()
     const project  = projects.find(p => p.id === project_id)
     if (user && project && user.notify_email) {
       sendTaskAssignedEmail({

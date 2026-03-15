@@ -6,12 +6,12 @@ export async function GET(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Include submissions explicitly owned by this user + legacy submissions with no owner set
-  const all = getAllSubmissions()
+  const all = await getAllSubmissions()
   const submissions = all.filter(s => s.submitted_by === userId || !s.submitted_by)
 
-  const enriched = submissions.map(sub => {
+  const enriched = await Promise.all(submissions.map(async sub => {
     if (sub.status === 'changes_requested') {
-      const reviews = getReviews(sub.id)
+      const reviews = await getReviews(sub.id)
       const changesReview = reviews
         .filter(r => r.action === 'changes_requested')
         .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       }
     }
     return { ...sub, changes_review: null }
-  })
+  }))
 
   return NextResponse.json({ submissions: enriched })
 }

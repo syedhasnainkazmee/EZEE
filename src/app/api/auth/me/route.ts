@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   const userId = getUserIdFromRequest(request)
   if (!userId) return NextResponse.json({ user: null }, { status: 401 })
 
-  const user = getUserById(userId)
+  const user = await getUserById(userId)
   if (!user) return NextResponse.json({ user: null }, { status: 401 })
 
   return NextResponse.json({
@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest) {
   if (name?.trim()) updates.name = name.trim()
   if (typeof notify_email === 'boolean') updates.notify_email = notify_email
 
-  const user = updateUser(userId, updates)
+  const user = await updateUser(userId, updates)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   return NextResponse.json({
@@ -56,14 +56,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 })
   }
 
-  const user = getUserById(userId)
+  const user = await getUserById(userId)
   if (!user?.password_hash) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const valid = await comparePassword(current_password, user.password_hash)
   if (!valid) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 401 })
 
   const password_hash = await hashPassword(new_password)
-  updateUser(userId, { password_hash })
+  await updateUser(userId, { password_hash })
 
   return NextResponse.json({ ok: true })
 }

@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   if (cookie) {
     const payload = verifyJwt(cookie)
     if (payload) {
-      deleteSession(payload.jti)
+      await deleteSession(payload.jti)
     }
   }
 

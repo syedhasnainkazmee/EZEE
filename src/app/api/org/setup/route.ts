@@ -4,7 +4,7 @@ import { hashPassword, createSessionToken, COOKIE_NAME } from '@/lib/auth'
 
 // GET — lets the setup page check if an org already exists before rendering the form
 export async function GET() {
-  const org = getFirstOrg()
+  const org = await getFirstOrg()
   return NextResponse.json({ exists: !!org }, {
     headers: { 'Cache-Control': 'no-store' }
   })
@@ -13,7 +13,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Only allow if no org exists yet
-    const existing = getFirstOrg()
+    const existing = await getFirstOrg()
     if (existing) {
       return NextResponse.json({ error: 'Organization already exists. Use the login page.' }, { status: 409 })
     }
@@ -28,30 +28,30 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanDomain = domain?.toLowerCase().trim().replace('@', '') || admin_email.split('@')[1]
-    const org = createOrg(org_name, cleanDomain)
+    const org = await createOrg(org_name, cleanDomain)
 
     const password_hash = await hashPassword(password)
     const normalizedEmail = admin_email.toLowerCase().trim()
 
     // If a user with this email already exists (e.g. from seed data), update them
     // instead of inserting a duplicate row that would break getUserByEmail lookups.
-    const existingUser = getUserByEmail(normalizedEmail)
+    const existingUser = await getUserByEmail(normalizedEmail)
     let admin
     if (existingUser) {
-      admin = updateUser(existingUser.id, { name: admin_name, role: 'admin', org_id: org.id, password_hash })!
+      admin = await updateUser(existingUser.id, { name: admin_name, role: 'admin', org_id: org.id, password_hash })!
     } else {
-      admin = createUser(admin_name, normalizedEmail, 'admin', { org_id: org.id, password_hash })
+      admin = await createUser(admin_name, normalizedEmail, 'admin', { org_id: org.id, password_hash })
     }
 
     const { token, jti, expiresAt } = createSessionToken({
-      id: admin.id, org_id: admin.org_id, role: admin.role,
-      name: admin.name, email: admin.email,
+      id: admin!.id, org_id: admin!.org_id, role: admin!.role,
+      name: admin!.name, email: admin!.email,
     })
-    createSession(admin.id, jti, expiresAt)
+    await createSession(admin!.id, jti, expiresAt)
 
     const response = NextResponse.json({
       org: { id: org.id, name: org.name, domain: org.domain },
-      user: { id: admin.id, name: admin.name, email: admin.email, role: admin.role },
+      user: { id: admin!.id, name: admin!.name, email: admin!.email, role: admin!.role },
     })
     const isProd = process.env.NODE_ENV === 'production'
     response.cookies.set(COOKIE_NAME, token, {

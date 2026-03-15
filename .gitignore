@@ -5,3 +5,4 @@ design-review.db-wal
 design-review.db-shm
 public/uploads/
 .env.local
+test.db

@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   if (!submissionId || files.length === 0) {
     return NextResponse.json({ error: 'Missing submissionId or files' }, { status: 400 })
   }
-  const submission = getSubmission(submissionId)
+  const submission = await getSubmission(submissionId)
   if (!submission) {
     return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
   }
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const uploadDir = path.join(process.cwd(), 'public', 'uploads')
   await mkdir(uploadDir, { recursive: true })
 
-  const currentCount = getDesignCount(submissionId)
+  const currentCount = await getDesignCount(submissionId)
   const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
   const inserted = []
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const orderIndex = currentCount + i
     const variationLabel = labels[orderIndex] ?? `V${orderIndex + 1}`
 
-    const design = addDesign({
+    const design = await addDesign({
       submission_id: submissionId,
       filename,
       original_name: file.name,

@@ -99,99 +99,67 @@ export type Notification = {
   title: string; body: string; href: string | null; read: boolean; created_at: string
 }
 
-// ── Seed default data if DB is empty ──────────────────────────────────────
-
-function ensureSeeded() {
-  if (process.env.DISABLE_SEED === 'true') return
-  const existing = db.select().from(usersTable).all()
-  if (existing.length > 0) return
-
-  const uid1 = randomUUID(), uid2 = randomUUID(), uid3 = randomUUID()
-  const wfId = randomUUID()
-  const now  = new Date().toISOString()
-
-  db.insert(usersTable).values([
-    { id: uid1, org_id: null, name: 'Minhal',  email: 'minhal@sunhub.com',  role: 'member', token: 'minhal-abc123',   password_hash: null, notify_email: true, created_at: now },
-    { id: uid2, org_id: null, name: 'Meeran',  email: 'meeran@sunhub.com',  role: 'member', token: 'meeran-def456',   password_hash: null, notify_email: true, created_at: now },
-    { id: uid3, org_id: null, name: 'Daniyal', email: 'daniyal@sunhub.com', role: 'admin',  token: 'daniyal-ghi789', password_hash: null, notify_email: true, created_at: now },
-  ]).run()
-
-  db.insert(workflowsTable).values([{
-    id: wfId, org_id: null, name: 'Social Media Design Review',
-    description: 'Default approval chain for social media designs.',
-    is_active: true, created_at: now,
-  }]).run()
-
-  db.insert(workflowStepsTable).values([
-    { id: randomUUID(), workflow_id: wfId, step: 1, user_id: uid1, focus: 'Check brand consistency — logo usage, brand colors, and typography' },
-    { id: randomUUID(), workflow_id: wfId, step: 2, user_id: uid2, focus: 'Check copy accuracy, safe margins, and overall aesthetic' },
-    { id: randomUUID(), workflow_id: wfId, step: 3, user_id: uid3, focus: 'Final approval — overall sign-off' },
-  ]).run()
-}
-
-ensureSeeded()
-
 // ── Organizations ──────────────────────────────────────────────────────────
 
-export function getOrg(id: string): Organization | undefined {
+export async function getOrg(id: string): Promise<Organization | undefined> {
   const cached = cacheGet<Organization>(CK.org(id))
   if (cached) return cached
-  const org = db.select().from(orgsTable).where(eq(orgsTable.id, id)).get() as Organization | undefined
+  const org = await db.select().from(orgsTable).where(eq(orgsTable.id, id)).get() as Organization | undefined
   if (org) cacheSet(CK.org(id), org, 5 * 60 * 1000)
   return org
 }
 
-export function getFirstOrg(): Organization | undefined {
-  return db.select().from(orgsTable).get() as Organization | undefined
+export async function getFirstOrg(): Promise<Organization | undefined> {
+  return await db.select().from(orgsTable).get() as Organization | undefined
 }
 
-export function createOrg(name: string, domain: string): Organization {
+export async function createOrg(name: string, domain: string): Promise<Organization> {
   const org: Organization = { id: randomUUID(), name, domain, created_at: new Date().toISOString() }
-  db.insert(orgsTable).values(org).run()
+  await db.insert(orgsTable).values(org).run()
   cacheSet(CK.org(org.id), org, 5 * 60 * 1000)
   return org
 }
 
-export function updateOrg(id: string, updates: Partial<Pick<Organization, 'name' | 'domain'>>): Organization | null {
-  db.update(orgsTable).set(updates).where(eq(orgsTable.id, id)).run()
+export async function updateOrg(id: string, updates: Partial<Pick<Organization, 'name' | 'domain'>>): Promise<Organization | null> {
+  await db.update(orgsTable).set(updates).where(eq(orgsTable.id, id)).run()
   cacheDelete(CK.org(id))
-  return getOrg(id) ?? null
+  return await getOrg(id) ?? null
 }
 
 // ── Users ──────────────────────────────────────────────────────────────────
 
-export function getAllUsers(): User[] {
+export async function getAllUsers(): Promise<User[]> {
   const cached = cacheGet<User[]>(CK.users())
   if (cached) return cached
-  const users = db.select().from(usersTable).orderBy(asc(usersTable.created_at)).all() as User[]
+  const users = await db.select().from(usersTable).orderBy(asc(usersTable.created_at)).all() as User[]
   cacheSet(CK.users(), users, 5 * 60 * 1000)
   return users
 }
 
-export function getUserByToken(token: string): User | undefined {
-  return db.select().from(usersTable).where(eq(usersTable.token, token)).get() as User | undefined
+export async function getUserByToken(token: string): Promise<User | undefined> {
+  return await db.select().from(usersTable).where(eq(usersTable.token, token)).get() as User | undefined
 }
 
-export function getUserById(id: string): User | undefined {
+export async function getUserById(id: string): Promise<User | undefined> {
   const cached = cacheGet<User>(CK.user(id))
   if (cached) return cached
-  const user = db.select().from(usersTable).where(eq(usersTable.id, id)).get() as User | undefined
+  const user = await db.select().from(usersTable).where(eq(usersTable.id, id)).get() as User | undefined
   if (user) cacheSet(CK.user(id), user, 5 * 60 * 1000)
   return user
 }
 
-export function getUserByEmail(email: string): User | undefined {
+export async function getUserByEmail(email: string): Promise<User | undefined> {
   const cached = cacheGet<User>(CK.userByEmail(email))
   if (cached) return cached
-  const user = db.select().from(usersTable).where(eq(usersTable.email, email)).get() as User | undefined
+  const user = await db.select().from(usersTable).where(eq(usersTable.email, email)).get() as User | undefined
   if (user) cacheSet(CK.userByEmail(email), user, 5 * 60 * 1000)
   return user
 }
 
-export function createUser(
+export async function createUser(
   name: string, email: string, role: 'admin' | 'member',
   opts?: { org_id?: string; password_hash?: string }
-): User {
+): Promise<User> {
   const slug  = name.toLowerCase().replace(/[^a-z0-9]/g, '')
   const token = `${slug}-${randomUUID().slice(0, 8)}`
   const user: User = {
@@ -201,60 +169,60 @@ export function createUser(
     notify_email: true,
     created_at: new Date().toISOString()
   }
-  db.insert(usersTable).values(user).run()
+  await db.insert(usersTable).values(user).run()
   cacheClear('user')
   return user
 }
 
-export function updateUser(id: string, updates: Partial<Pick<User, 'name' | 'email' | 'role' | 'password_hash' | 'notify_email' | 'org_id'>>): User | null {
-  db.update(usersTable).set(updates).where(eq(usersTable.id, id)).run()
+export async function updateUser(id: string, updates: Partial<Pick<User, 'name' | 'email' | 'role' | 'password_hash' | 'notify_email' | 'org_id'>>): Promise<User | null> {
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).run()
   cacheDelete(CK.user(id))
   cacheClear('user:email')
   cacheDelete(CK.users())
-  return getUserById(id) ?? null
+  return await getUserById(id) ?? null
 }
 
-export function deleteUser(id: string): boolean {
-  const result = db.delete(usersTable).where(eq(usersTable.id, id)).run()
+export async function deleteUser(id: string): Promise<boolean> {
+  const result = await db.delete(usersTable).where(eq(usersTable.id, id)).run()
   cacheDelete(CK.user(id))
   cacheClear('user:email')
   cacheDelete(CK.users())
-  return result.changes > 0
+  return result.rowsAffected > 0
 }
 
 // ── Sessions ───────────────────────────────────────────────────────────────
 
-export function createSession(user_id: string, jti: string, expiresAt: Date): UserSession {
+export async function createSession(user_id: string, jti: string, expiresAt: Date): Promise<UserSession> {
   const session: UserSession = {
     id: randomUUID(), user_id, jti,
     expires_at: expiresAt.toISOString(),
     created_at: new Date().toISOString(),
   }
-  db.insert(sessionsTable).values(session).run()
+  await db.insert(sessionsTable).values(session).run()
   return session
 }
 
-export function getSession(jti: string): UserSession | undefined {
-  return db.select().from(sessionsTable).where(eq(sessionsTable.jti, jti)).get() as UserSession | undefined
+export async function getSession(jti: string): Promise<UserSession | undefined> {
+  return await db.select().from(sessionsTable).where(eq(sessionsTable.jti, jti)).get() as UserSession | undefined
 }
 
-export function deleteSession(jti: string): void {
-  db.delete(sessionsTable).where(eq(sessionsTable.jti, jti)).run()
+export async function deleteSession(jti: string): Promise<void> {
+  await db.delete(sessionsTable).where(eq(sessionsTable.jti, jti)).run()
 }
 
-export function deleteUserSessions(user_id: string): void {
-  db.delete(sessionsTable).where(eq(sessionsTable.user_id, user_id)).run()
+export async function deleteUserSessions(user_id: string): Promise<void> {
+  await db.delete(sessionsTable).where(eq(sessionsTable.user_id, user_id)).run()
 }
 
 // ── Invitations ────────────────────────────────────────────────────────────
 
-export function createInvitation(org_id: string, email: string, role: 'admin' | 'member'): InvitationToken {
+export async function createInvitation(org_id: string, email: string, role: 'admin' | 'member'): Promise<InvitationToken> {
   // Invalidate any existing unused invitation for this email
-  const existing = db.select().from(invitationsTable)
+  const existing = await db.select().from(invitationsTable)
     .where(and(eq(invitationsTable.email, email), eq(invitationsTable.used, false)))
     .get()
   if (existing) {
-    db.delete(invitationsTable).where(eq(invitationsTable.id, existing.id)).run()
+    await db.delete(invitationsTable).where(eq(invitationsTable.id, existing.id)).run()
   }
 
   const expires = new Date(Date.now() + 72 * 60 * 60 * 1000) // 72 hours
@@ -265,75 +233,75 @@ export function createInvitation(org_id: string, email: string, role: 'admin' | 
     expires_at: expires.toISOString(),
     created_at: new Date().toISOString(),
   }
-  db.insert(invitationsTable).values(inv).run()
+  await db.insert(invitationsTable).values(inv).run()
   return inv
 }
 
-export function getInvitation(token: string): InvitationToken | undefined {
-  return db.select().from(invitationsTable).where(eq(invitationsTable.token, token)).get() as InvitationToken | undefined
+export async function getInvitation(token: string): Promise<InvitationToken | undefined> {
+  return await db.select().from(invitationsTable).where(eq(invitationsTable.token, token)).get() as InvitationToken | undefined
 }
 
-export function getAllInvitations(org_id: string): InvitationToken[] {
-  return db.select().from(invitationsTable)
+export async function getAllInvitations(org_id: string): Promise<InvitationToken[]> {
+  return await db.select().from(invitationsTable)
     .where(eq(invitationsTable.org_id, org_id))
     .orderBy(desc(invitationsTable.created_at))
     .all() as InvitationToken[]
 }
 
-export function consumeInvitation(token: string): InvitationToken | null {
-  const inv = getInvitation(token)
+export async function consumeInvitation(token: string): Promise<InvitationToken | null> {
+  const inv = await getInvitation(token)
   if (!inv) return null
-  db.update(invitationsTable).set({ used: true }).where(eq(invitationsTable.token, token)).run()
+  await db.update(invitationsTable).set({ used: true }).where(eq(invitationsTable.token, token)).run()
   return { ...inv, used: true }
 }
 
-export function deleteInvitation(id: string): void {
-  db.delete(invitationsTable).where(eq(invitationsTable.id, id)).run()
+export async function deleteInvitation(id: string): Promise<void> {
+  await db.delete(invitationsTable).where(eq(invitationsTable.id, id)).run()
 }
 
 // ── Projects ───────────────────────────────────────────────────────────────
 
-export function getAllProjects(org_id?: string | null): Project[] {
+export async function getAllProjects(org_id?: string | null): Promise<Project[]> {
   let query: any = db.select().from(projectsTable)
   if (org_id) query = query.where(eq(projectsTable.org_id, org_id))
-  return query.orderBy(asc(projectsTable.name)).all() as Project[]
+  return await query.orderBy(asc(projectsTable.name)).all() as Project[]
 }
 
-export function getProject(id: string): Project | null {
-  return db.select().from(projectsTable).where(eq(projectsTable.id, id)).get() as Project | null
+export async function getProject(id: string): Promise<Project | null> {
+  return await db.select().from(projectsTable).where(eq(projectsTable.id, id)).get() as Project | null
 }
 
-export function createProject(name: string, description: string, org_id?: string | null): Project {
+export async function createProject(name: string, description: string, org_id?: string | null): Promise<Project> {
   const proj: Project = {
     id: randomUUID(), org_id: org_id ?? null,
     name, description, created_at: new Date().toISOString()
   }
-  db.insert(projectsTable).values(proj).run()
+  await db.insert(projectsTable).values(proj).run()
   return proj
 }
 
-export function updateProject(id: string, updates: Partial<Pick<Project, 'name' | 'description'>>): Project | null {
-  db.update(projectsTable).set(updates).where(eq(projectsTable.id, id)).run()
-  return getProject(id)
+export async function updateProject(id: string, updates: Partial<Pick<Project, 'name' | 'description'>>): Promise<Project | null> {
+  await db.update(projectsTable).set(updates).where(eq(projectsTable.id, id)).run()
+  return await getProject(id)
 }
 
-export function deleteProject(id: string): boolean {
-  const result = db.delete(projectsTable).where(eq(projectsTable.id, id)).run()
-  return result.changes > 0
+export async function deleteProject(id: string): Promise<boolean> {
+  const result = await db.delete(projectsTable).where(eq(projectsTable.id, id)).run()
+  return result.rowsAffected > 0
 }
 
 // ── Tasks ──────────────────────────────────────────────────────────────────
 
-export function getAllTasks(project_id?: string, assignee_id?: string): (Task & { assignee: User | null; assignor: User | null; project_name: string })[] {
+export async function getAllTasks(project_id?: string, assignee_id?: string): Promise<(Task & { assignee: User | null; assignor: User | null; project_name: string })[]> {
   const cacheKey = CK.tasks(project_id)
   const cached = cacheGet<any[]>(cacheKey)
   if (cached && !assignee_id) return cached
 
   let query: any = db.select().from(tasksTable)
   if (project_id) query = query.where(eq(tasksTable.project_id, project_id))
-  const allTasks = query.orderBy(desc(tasksTable.created_at)).all() as Task[]
-  const allUsers = db.select().from(usersTable).all()
-  const allProjects = db.select().from(projectsTable).all()
+  const allTasks = await query.orderBy(desc(tasksTable.created_at)).all() as Task[]
+  const allUsers = await db.select().from(usersTable).all()
+  const allProjects = await db.select().from(projectsTable).all()
 
   const enriched = allTasks.map(t => ({
     ...t,
@@ -347,11 +315,11 @@ export function getAllTasks(project_id?: string, assignee_id?: string): (Task & 
   return enriched
 }
 
-export function getTask(id: string): (Task & { assignee: User | null; assignor: User | null; project_name: string }) | null {
-  const task = db.select().from(tasksTable).where(eq(tasksTable.id, id)).get() as Task | null
+export async function getTask(id: string): Promise<(Task & { assignee: User | null; assignor: User | null; project_name: string }) | null> {
+  const task = await db.select().from(tasksTable).where(eq(tasksTable.id, id)).get() as Task | null
   if (!task) return null
-  const allUsers = db.select().from(usersTable).all()
-  const project = db.select().from(projectsTable).where(eq(projectsTable.id, task.project_id)).get() as Project | null
+  const allUsers = await db.select().from(usersTable).all()
+  const project = await db.select().from(projectsTable).where(eq(projectsTable.id, task.project_id)).get() as Project | null
   return {
     ...task,
     assignee: task.assignee_id ? (allUsers.find(u => u.id === task.assignee_id) ?? null) : null,
@@ -360,21 +328,21 @@ export function getTask(id: string): (Task & { assignee: User | null; assignor: 
   }
 }
 
-export function createTask(
+export async function createTask(
   project_id: string, title: string, description: string,
   assignor_id: string | null, assignee_id: string | null,
   opts?: { due_date?: string; priority?: 'low' | 'medium' | 'high' }
-): Task {
+): Promise<Task> {
   const task: Task = {
     id: randomUUID(), project_id, title, description, assignor_id, assignee_id,
     due_date: opts?.due_date ?? null, priority: opts?.priority ?? 'medium',
     status: 'open', created_at: new Date().toISOString()
   }
-  db.insert(tasksTable).values(task).run()
+  await db.insert(tasksTable).values(task).run()
   cacheClear('tasks:')
   // Notify assignee
   if (assignee_id) {
-    createNotification({
+    await createNotification({
       user_id: assignee_id, type: 'task_assigned',
       title: `New task: ${title}`,
       body: description || 'You have been assigned a new task.',
@@ -384,30 +352,30 @@ export function createTask(
   return task
 }
 
-export function updateTask(id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'assignee_id' | 'assignor_id' | 'status' | 'due_date' | 'priority'>>): Task | null {
-  db.update(tasksTable).set(updates).where(eq(tasksTable.id, id)).run()
+export async function updateTask(id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'assignee_id' | 'assignor_id' | 'status' | 'due_date' | 'priority'>>): Promise<Task | null> {
+  await db.update(tasksTable).set(updates).where(eq(tasksTable.id, id)).run()
   cacheClear('tasks:')
-  return db.select().from(tasksTable).where(eq(tasksTable.id, id)).get() as Task | null
+  return await db.select().from(tasksTable).where(eq(tasksTable.id, id)).get() as Task | null
 }
 
-export function updateTaskStatus(id: string, status: 'open' | 'in_progress' | 'in_review' | 'completed'): Task | null {
-  return updateTask(id, { status })
+export async function updateTaskStatus(id: string, status: 'open' | 'in_progress' | 'in_review' | 'completed'): Promise<Task | null> {
+  return await updateTask(id, { status })
 }
 
-export function deleteTask(id: string): boolean {
-  db.delete(subtasksTable).where(eq(subtasksTable.task_id, id)).run()
-  db.delete(attachmentsTable).where(eq(attachmentsTable.task_id, id)).run()
-  const result = db.delete(tasksTable).where(eq(tasksTable.id, id)).run()
+export async function deleteTask(id: string): Promise<boolean> {
+  await db.delete(subtasksTable).where(eq(subtasksTable.task_id, id)).run()
+  await db.delete(attachmentsTable).where(eq(attachmentsTable.task_id, id)).run()
+  const result = await db.delete(tasksTable).where(eq(tasksTable.id, id)).run()
   cacheClear('tasks:')
-  return result.changes > 0
+  return result.rowsAffected > 0
 }
 
 // ── Subtasks ───────────────────────────────────────────────────────────────
 
-export function getSubtasks(task_id: string): Subtask[] {
+export async function getSubtasks(task_id: string): Promise<Subtask[]> {
   const cached = cacheGet<Subtask[]>(CK.subtasks(task_id))
   if (cached) return cached
-  const items = db.select().from(subtasksTable)
+  const items = await db.select().from(subtasksTable)
     .where(eq(subtasksTable.task_id, task_id))
     .orderBy(asc(subtasksTable.created_at))
     .all() as Subtask[]
@@ -415,33 +383,33 @@ export function getSubtasks(task_id: string): Subtask[] {
   return items
 }
 
-export function createSubtask(task_id: string, title: string): Subtask {
+export async function createSubtask(task_id: string, title: string): Promise<Subtask> {
   const s: Subtask = { id: randomUUID(), task_id, title, completed: false, created_at: new Date().toISOString() }
-  db.insert(subtasksTable).values(s).run()
+  await db.insert(subtasksTable).values(s).run()
   cacheDelete(CK.subtasks(task_id))
   return s
 }
 
-export function updateSubtask(id: string, updates: Partial<Pick<Subtask, 'title' | 'completed'>>): Subtask | null {
-  db.update(subtasksTable).set(updates).where(eq(subtasksTable.id, id)).run()
-  const s = db.select().from(subtasksTable).where(eq(subtasksTable.id, id)).get() as Subtask | null
+export async function updateSubtask(id: string, updates: Partial<Pick<Subtask, 'title' | 'completed'>>): Promise<Subtask | null> {
+  await db.update(subtasksTable).set(updates).where(eq(subtasksTable.id, id)).run()
+  const s = await db.select().from(subtasksTable).where(eq(subtasksTable.id, id)).get() as Subtask | null
   if (s) cacheDelete(CK.subtasks(s.task_id))
   return s
 }
 
-export function deleteSubtask(id: string): boolean {
-  const s = db.select().from(subtasksTable).where(eq(subtasksTable.id, id)).get() as Subtask | null
+export async function deleteSubtask(id: string): Promise<boolean> {
+  const s = await db.select().from(subtasksTable).where(eq(subtasksTable.id, id)).get() as Subtask | null
   if (s) cacheDelete(CK.subtasks(s.task_id))
-  const result = db.delete(subtasksTable).where(eq(subtasksTable.id, id)).run()
-  return result.changes > 0
+  const result = await db.delete(subtasksTable).where(eq(subtasksTable.id, id)).run()
+  return result.rowsAffected > 0
 }
 
 // ── Task Attachments ───────────────────────────────────────────────────────
 
-export function getTaskAttachments(task_id: string): TaskAttachment[] {
+export async function getTaskAttachments(task_id: string): Promise<TaskAttachment[]> {
   const cached = cacheGet<TaskAttachment[]>(CK.attachments(task_id))
   if (cached) return cached
-  const items = db.select().from(attachmentsTable)
+  const items = await db.select().from(attachmentsTable)
     .where(eq(attachmentsTable.task_id, task_id))
     .orderBy(asc(attachmentsTable.created_at))
     .all() as TaskAttachment[]
@@ -449,28 +417,28 @@ export function getTaskAttachments(task_id: string): TaskAttachment[] {
   return items
 }
 
-export function addTaskAttachment(data: Omit<TaskAttachment, 'id' | 'created_at'>): TaskAttachment {
+export async function addTaskAttachment(data: Omit<TaskAttachment, 'id' | 'created_at'>): Promise<TaskAttachment> {
   const a: TaskAttachment = { id: randomUUID(), ...data, created_at: new Date().toISOString() }
-  db.insert(attachmentsTable).values(a).run()
+  await db.insert(attachmentsTable).values(a).run()
   cacheDelete(CK.attachments(data.task_id))
   return a
 }
 
-export function deleteTaskAttachment(id: string): { filename: string } | null {
-  const a = db.select().from(attachmentsTable).where(eq(attachmentsTable.id, id)).get() as TaskAttachment | null
+export async function deleteTaskAttachment(id: string): Promise<{ filename: string } | null> {
+  const a = await db.select().from(attachmentsTable).where(eq(attachmentsTable.id, id)).get() as TaskAttachment | null
   if (!a) return null
-  db.delete(attachmentsTable).where(eq(attachmentsTable.id, id)).run()
+  await db.delete(attachmentsTable).where(eq(attachmentsTable.id, id)).run()
   cacheDelete(CK.attachments(a.task_id))
   return { filename: a.filename }
 }
 
 // ── Workflows ──────────────────────────────────────────────────────────────
 
-export function getAllWorkflows(org_id?: string | null) {
-  const allWf    = db.select().from(workflowsTable).all()
-  const allSteps = db.select().from(workflowStepsTable).all()
-  const allUsers = db.select().from(usersTable).all()
-  const allSubs  = db.select({ workflow_id: submissionsTable.workflow_id }).from(submissionsTable).all()
+export async function getAllWorkflows(org_id?: string | null) {
+  const allWf    = await db.select().from(workflowsTable).all()
+  const allSteps = await db.select().from(workflowStepsTable).all()
+  const allUsers = await db.select().from(usersTable).all()
+  const allSubs  = await db.select({ workflow_id: submissionsTable.workflow_id }).from(submissionsTable).all()
 
   const filtered = org_id ? allWf.filter(w => !w.org_id || w.org_id === org_id) : allWf
 
@@ -484,72 +452,72 @@ export function getAllWorkflows(org_id?: string | null) {
   }))
 }
 
-export function getWorkflow(id: string) {
-  const wf = db.select().from(workflowsTable).where(eq(workflowsTable.id, id)).get()
+export async function getWorkflow(id: string) {
+  const wf = await db.select().from(workflowsTable).where(eq(workflowsTable.id, id)).get()
   if (!wf) return null
-  const allUsers = db.select().from(usersTable).all()
-  const steps = db.select().from(workflowStepsTable)
+  const allUsers = await db.select().from(usersTable).all()
+  const steps = (await db.select().from(workflowStepsTable)
     .where(eq(workflowStepsTable.workflow_id, id))
-    .all()
+    .all())
     .sort((a, b) => a.step - b.step)
     .map(s => ({ ...s, user: allUsers.find(u => u.id === s.user_id) ?? null }))
   return { ...wf, steps }
 }
 
-export function createWorkflow(name: string, description: string, org_id?: string | null): Workflow {
+export async function createWorkflow(name: string, description: string, org_id?: string | null): Promise<Workflow> {
   const wf: Workflow = {
     id: randomUUID(), org_id: org_id ?? null,
     name, description, is_active: true, created_at: new Date().toISOString()
   }
-  db.insert(workflowsTable).values(wf).run()
+  await db.insert(workflowsTable).values(wf).run()
   return wf
 }
 
-export function updateWorkflow(id: string, updates: Partial<Pick<Workflow, 'name' | 'description' | 'is_active'>>): Workflow | null {
-  db.update(workflowsTable).set(updates).where(eq(workflowsTable.id, id)).run()
-  return db.select().from(workflowsTable).where(eq(workflowsTable.id, id)).get() as Workflow | null
+export async function updateWorkflow(id: string, updates: Partial<Pick<Workflow, 'name' | 'description' | 'is_active'>>): Promise<Workflow | null> {
+  await db.update(workflowsTable).set(updates).where(eq(workflowsTable.id, id)).run()
+  return await db.select().from(workflowsTable).where(eq(workflowsTable.id, id)).get() as Workflow | null
 }
 
-export function deleteWorkflow(id: string): boolean {
-  db.delete(workflowStepsTable).where(eq(workflowStepsTable.workflow_id, id)).run()
-  db.delete(workflowsTable).where(eq(workflowsTable.id, id)).run()
+export async function deleteWorkflow(id: string): Promise<boolean> {
+  await db.delete(workflowStepsTable).where(eq(workflowStepsTable.workflow_id, id)).run()
+  await db.delete(workflowsTable).where(eq(workflowsTable.id, id)).run()
   return true
 }
 
-export function setWorkflowSteps(workflow_id: string, steps: { user_id: string; focus: string }[]): WorkflowStep[] {
-  db.delete(workflowStepsTable).where(eq(workflowStepsTable.workflow_id, workflow_id)).run()
+export async function setWorkflowSteps(workflow_id: string, steps: { user_id: string; focus: string }[]): Promise<WorkflowStep[]> {
+  await db.delete(workflowStepsTable).where(eq(workflowStepsTable.workflow_id, workflow_id)).run()
   const newSteps: WorkflowStep[] = steps.map((s, i) => ({
     id: randomUUID(), workflow_id, step: i + 1, user_id: s.user_id, focus: s.focus,
   }))
-  if (newSteps.length > 0) db.insert(workflowStepsTable).values(newSteps).run()
+  if (newSteps.length > 0) await db.insert(workflowStepsTable).values(newSteps).run()
   return newSteps
 }
 
-export function getWorkflowStep(workflow_id: string, step: number): (WorkflowStep & { user: User | null }) | null {
-  const s = db.select().from(workflowStepsTable)
+export async function getWorkflowStep(workflow_id: string, step: number): Promise<(WorkflowStep & { user: User | null }) | null> {
+  const s = await db.select().from(workflowStepsTable)
     .where(and(eq(workflowStepsTable.workflow_id, workflow_id), eq(workflowStepsTable.step, step)))
     .get()
   if (!s) return null
-  return { ...s, user: getUserById(s.user_id) ?? null }
+  return { ...s, user: await getUserById(s.user_id) ?? null }
 }
 
-export function getNextWorkflowStep(workflow_id: string, currentStep: number): (WorkflowStep & { user: User | null }) | null {
-  return getWorkflowStep(workflow_id, currentStep + 1)
+export async function getNextWorkflowStep(workflow_id: string, currentStep: number): Promise<(WorkflowStep & { user: User | null }) | null> {
+  return await getWorkflowStep(workflow_id, currentStep + 1)
 }
 
-export function getTotalSteps(workflow_id: string): number {
-  return db.select().from(workflowStepsTable).where(eq(workflowStepsTable.workflow_id, workflow_id)).all().length
+export async function getTotalSteps(workflow_id: string): Promise<number> {
+  return (await db.select().from(workflowStepsTable).where(eq(workflowStepsTable.workflow_id, workflow_id)).all()).length
 }
 
 // ── Submissions ────────────────────────────────────────────────────────────
 
-export function getAllSubmissions(submitted_by?: string) {
+export async function getAllSubmissions(submitted_by?: string) {
   const cached = cacheGet<any[]>(CK.submissions())
-  const allSubs    = db.select().from(submissionsTable).orderBy(desc(submissionsTable.created_at)).all()
-  const allWf      = db.select().from(workflowsTable).all()
-  const allSteps   = db.select().from(workflowStepsTable).all()
-  const allUsers   = db.select().from(usersTable).all()
-  const allDesigns = db.select({ submission_id: designsTable.submission_id }).from(designsTable).all()
+  const allSubs    = await db.select().from(submissionsTable).orderBy(desc(submissionsTable.created_at)).all()
+  const allWf      = await db.select().from(workflowsTable).all()
+  const allSteps   = await db.select().from(workflowStepsTable).all()
+  const allUsers   = await db.select().from(usersTable).all()
+  const allDesigns = await db.select({ submission_id: designsTable.submission_id }).from(designsTable).all()
 
   const enriched = allSubs.map(sub => {
     const wf       = allWf.find(w => w.id === sub.workflow_id)
@@ -570,54 +538,54 @@ export function getAllSubmissions(submitted_by?: string) {
   return enriched
 }
 
-export function getSubmission(id: string): Submission | undefined {
-  return db.select().from(submissionsTable).where(eq(submissionsTable.id, id)).get() as Submission | undefined
+export async function getSubmission(id: string): Promise<Submission | undefined> {
+  return await db.select().from(submissionsTable).where(eq(submissionsTable.id, id)).get() as Submission | undefined
 }
 
-export function createSubmission(title: string, description: string, workflow_id: string, task_id?: string | null, submitted_by?: string | null): Submission {
+export async function createSubmission(title: string, description: string, workflow_id: string, task_id?: string | null, submitted_by?: string | null): Promise<Submission> {
   const sub: Submission = {
     id: randomUUID(), title, description, workflow_id, task_id: task_id ?? null,
     submitted_by: submitted_by ?? null,
     status: 'draft', current_step: null, version: 1, created_at: new Date().toISOString(),
   }
-  db.insert(submissionsTable).values(sub).run()
+  await db.insert(submissionsTable).values(sub).run()
   cacheDelete(CK.submissions())
   return sub
 }
 
-export function updateSubmission(id: string, updates: Partial<Submission>): Submission | null {
-  db.update(submissionsTable).set(updates).where(eq(submissionsTable.id, id)).run()
+export async function updateSubmission(id: string, updates: Partial<Submission>): Promise<Submission | null> {
+  await db.update(submissionsTable).set(updates).where(eq(submissionsTable.id, id)).run()
   cacheDelete(CK.submissions())
-  return getSubmission(id) ?? null
+  return await getSubmission(id) ?? null
 }
 
 // ── Designs ────────────────────────────────────────────────────────────────
 
-export function getDesigns(submission_id: string): Design[] {
-  return db.select().from(designsTable)
+export async function getDesigns(submission_id: string): Promise<Design[]> {
+  return (await db.select().from(designsTable)
     .where(eq(designsTable.submission_id, submission_id))
-    .all()
+    .all())
     .sort((a, b) => a.order_index - b.order_index) as Design[]
 }
 
-export function addDesign(data: Omit<Design, 'id'>): Design {
+export async function addDesign(data: Omit<Design, 'id'>): Promise<Design> {
   const design: Design = { id: randomUUID(), ...data }
-  db.insert(designsTable).values(design).run()
+  await db.insert(designsTable).values(design).run()
   return design
 }
 
-export function getDesignCount(submission_id: string): number {
-  return db.select().from(designsTable).where(eq(designsTable.submission_id, submission_id)).all().length
+export async function getDesignCount(submission_id: string): Promise<number> {
+  return (await db.select().from(designsTable).where(eq(designsTable.submission_id, submission_id)).all()).length
 }
 
 // ── Reviews ────────────────────────────────────────────────────────────────
 
-export function getReviews(submission_id: string): (Review & { reviewer: User | null; step: WorkflowStep | null })[] {
-  const sub      = getSubmission(submission_id)
-  const allRev   = db.select().from(reviewsTable).where(eq(reviewsTable.submission_id, submission_id)).all()
-  const allUsers = db.select().from(usersTable).all()
+export async function getReviews(submission_id: string): Promise<(Review & { reviewer: User | null; step: WorkflowStep | null })[]> {
+  const sub      = await getSubmission(submission_id)
+  const allRev   = await db.select().from(reviewsTable).where(eq(reviewsTable.submission_id, submission_id)).all()
+  const allUsers = await db.select().from(usersTable).all()
   const allSteps = sub
-    ? db.select().from(workflowStepsTable).where(eq(workflowStepsTable.workflow_id, sub.workflow_id)).all()
+    ? await db.select().from(workflowStepsTable).where(eq(workflowStepsTable.workflow_id, sub.workflow_id)).all()
     : []
 
   return allRev
@@ -634,11 +602,11 @@ export function clearUserReviewCache(userId: string) {
   cacheDelete(CK.reviews(userId))
 }
 
-export function upsertReview(
+export async function upsertReview(
   submission_id: string, reviewer_id: string, version: number,
   action: 'approved' | 'changes_requested', comment: string,
-): Review {
-  const existing = db.select().from(reviewsTable)
+): Promise<Review> {
+  const existing = await db.select().from(reviewsTable)
     .where(and(
       eq(reviewsTable.submission_id, submission_id),
       eq(reviewsTable.reviewer_id, reviewer_id),
@@ -653,26 +621,26 @@ export function upsertReview(
   }
 
   if (existing) {
-    db.update(reviewsTable).set(review).where(eq(reviewsTable.id, existing.id)).run()
+    await db.update(reviewsTable).set(review).where(eq(reviewsTable.id, existing.id)).run()
   } else {
-    db.insert(reviewsTable).values(review).run()
+    await db.insert(reviewsTable).values(review).run()
   }
   cacheDelete(CK.reviews(reviewer_id))
   return review
 }
 
-export function getReviewsByUserStep(user_id: string) {
+export async function getReviewsByUserStep(user_id: string) {
   const cached = cacheGet<any[]>(CK.reviews(user_id))
   if (cached) return cached
 
-  const user = getUserById(user_id)
+  const user = await getUserById(user_id)
   if (!user) return []
 
-  const mySteps       = db.select().from(workflowStepsTable).where(eq(workflowStepsTable.user_id, user_id)).all()
-  const myReviews     = db.select().from(reviewsTable).where(eq(reviewsTable.reviewer_id, user_id)).all()
+  const mySteps       = await db.select().from(workflowStepsTable).where(eq(workflowStepsTable.user_id, user_id)).all()
+  const myReviews     = await db.select().from(reviewsTable).where(eq(reviewsTable.reviewer_id, user_id)).all()
   const myReviewedIds = new Set(myReviews.map(r => r.submission_id))
 
-  const allSubs = db.select().from(submissionsTable).all()
+  const allSubs = await db.select().from(submissionsTable).all()
   const relevant = allSubs.filter(sub => {
     const myStep = mySteps.find(s => s.workflow_id === sub.workflow_id)
     if (!myStep) return false
@@ -680,12 +648,12 @@ export function getReviewsByUserStep(user_id: string) {
     return isPending || myReviewedIds.has(sub.id)
   })
 
-  const allDesigns     = db.select().from(designsTable).all()
-  const allAnnotations = db.select().from(annotationsTable).all()
-  const allReviewsAll  = db.select().from(reviewsTable).all()
-  const allUsersAll    = db.select().from(usersTable).all()
-  const allStepsAll    = db.select().from(workflowStepsTable).all()
-  const allWorkflows   = db.select().from(workflowsTable).all()
+  const allDesigns     = await db.select().from(designsTable).all()
+  const allAnnotations = await db.select().from(annotationsTable).all()
+  const allReviewsAll  = await db.select().from(reviewsTable).all()
+  const allUsersAll    = await db.select().from(usersTable).all()
+  const allStepsAll    = await db.select().from(workflowStepsTable).all()
+  const allWorkflows   = await db.select().from(workflowsTable).all()
 
   const result = relevant
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -732,46 +700,46 @@ export function getReviewsByUserStep(user_id: string) {
 
 // ── Annotations ────────────────────────────────────────────────────────────
 
-export function getAnnotations(submission_id: string): (Annotation & { reviewer: User | undefined })[] {
-  const allAnn   = db.select().from(annotationsTable).where(eq(annotationsTable.submission_id, submission_id)).all()
-  const allUsers = db.select().from(usersTable).all()
+export async function getAnnotations(submission_id: string): Promise<(Annotation & { reviewer: User | undefined })[]> {
+  const allAnn   = await db.select().from(annotationsTable).where(eq(annotationsTable.submission_id, submission_id)).all()
+  const allUsers = await db.select().from(usersTable).all()
   return allAnn
     .map(a => ({ ...a, reviewer: allUsers.find(u => u.id === a.reviewer_id) as User | undefined }))
     .sort((a, b) => a.number - b.number)
 }
 
-export function addAnnotation(data: Omit<Annotation, 'id' | 'number' | 'created_at'>): Annotation {
-  const existing = db.select().from(annotationsTable).where(eq(annotationsTable.design_id, data.design_id)).all()
+export async function addAnnotation(data: Omit<Annotation, 'id' | 'number' | 'created_at'>): Promise<Annotation> {
+  const existing = await db.select().from(annotationsTable).where(eq(annotationsTable.design_id, data.design_id)).all()
   const number   = existing.length + 1
   const annotation: Annotation = { id: randomUUID(), ...data, number, created_at: new Date().toISOString() }
-  db.insert(annotationsTable).values(annotation).run()
+  await db.insert(annotationsTable).values(annotation).run()
   return annotation
 }
 
-export function deleteAnnotation(id: string, reviewer_id: string): boolean {
-  const result = db.delete(annotationsTable)
+export async function deleteAnnotation(id: string, reviewer_id: string): Promise<boolean> {
+  const result = await db.delete(annotationsTable)
     .where(and(eq(annotationsTable.id, id), eq(annotationsTable.reviewer_id, reviewer_id)))
     .run()
-  return result.changes > 0
+  return result.rowsAffected > 0
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────
 
-export function createNotification(opts: {
+export async function createNotification(opts: {
   user_id: string; type: Notification['type'];
-  title: string; body?: string; href?: string
-}): Notification {
+  title: string; body?: string; href?: string | null
+}): Promise<Notification> {
   const n: Notification = {
     id: randomUUID(), user_id: opts.user_id, type: opts.type,
     title: opts.title, body: opts.body ?? '', href: opts.href ?? null,
     read: false, created_at: new Date().toISOString(),
   }
-  db.insert(notificationsTable).values(n).run()
+  await db.insert(notificationsTable).values(n).run()
   cacheDelete(CK.notifications(opts.user_id))
   return n
 }
 
-export function getNotifications(user_id: string, unreadOnly = false): Notification[] {
+export async function getNotifications(user_id: string, unreadOnly = false): Promise<Notification[]> {
   const cached = cacheGet<Notification[]>(CK.notifications(user_id))
   if (cached && !unreadOnly) return cached
 
@@ -779,21 +747,21 @@ export function getNotifications(user_id: string, unreadOnly = false): Notificat
     .where(eq(notificationsTable.user_id, user_id))
     .orderBy(desc(notificationsTable.created_at))
 
-  const items = query.all() as Notification[]
+  const items = await query.all() as Notification[]
   if (!unreadOnly) cacheSet(CK.notifications(user_id), items, 10 * 1000)
   if (unreadOnly) return items.filter(n => !n.read)
   return items
 }
 
-export function markNotificationRead(id: string, user_id: string): void {
-  db.update(notificationsTable).set({ read: true })
+export async function markNotificationRead(id: string, user_id: string): Promise<void> {
+  await db.update(notificationsTable).set({ read: true })
     .where(and(eq(notificationsTable.id, id), eq(notificationsTable.user_id, user_id)))
     .run()
   cacheDelete(CK.notifications(user_id))
 }
 
-export function markAllNotificationsRead(user_id: string): void {
-  db.update(notificationsTable).set({ read: true })
+export async function markAllNotificationsRead(user_id: string): Promise<void> {
+  await db.update(notificationsTable).set({ read: true })
     .where(eq(notificationsTable.user_id, user_id))
     .run()
   cacheDelete(CK.notifications(user_id))

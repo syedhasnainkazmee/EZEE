@@ -5,7 +5,7 @@ import { writeFile } from 'fs/promises'
 import path from 'path'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  return NextResponse.json({ attachments: getTaskAttachments(params.id) })
+  return NextResponse.json({ attachments: await getTaskAttachments(params.id) })
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const uploadDir = path.join(process.cwd(), 'public', 'uploads')
     await writeFile(path.join(uploadDir, filename), buffer)
 
-    const attachment = addTaskAttachment({
+    const attachment = await addTaskAttachment({
       task_id: params.id,
       filename,
       original_name: file.name,

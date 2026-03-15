@@ -20,14 +20,14 @@ export async function POST(request: NextRequest) {
     const cleanEmail = email.toLowerCase().trim()
 
     // Check if user already exists and has a password
-    const existing = getUserByEmail(cleanEmail)
+    const existing = await getUserByEmail(cleanEmail)
     if (existing?.password_hash) {
       return NextResponse.json({ error: 'A user with this email already exists' }, { status: 409 })
     }
 
     // Domain validation
     if (orgId) {
-      const org = getOrg(orgId)
+      const org = await getOrg(orgId)
       if (org?.domain) {
         const domain = cleanEmail.split('@')[1]
         if (domain !== org.domain) {
@@ -36,12 +36,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const inv = createInvitation(orgId || 'default', cleanEmail, inviteRole as 'admin' | 'member')
+    const inv = await createInvitation(orgId || 'default', cleanEmail, inviteRole as 'admin' | 'member')
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
     const inviteUrl = `${baseUrl}/accept-invite?token=${inv.token}`
 
-    const org = orgId ? getOrg(orgId) : null
+    const org = orgId ? await getOrg(orgId) : null
 
     if (process.env.RESEND_API_KEY) {
       await resend.emails.send({

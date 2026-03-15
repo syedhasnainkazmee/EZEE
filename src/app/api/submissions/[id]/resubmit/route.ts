@@ -5,7 +5,7 @@ import path from 'path'
 import { randomUUID } from 'crypto'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const submission = getSubmission(params.id)
+  const submission = await getSubmission(params.id)
   if (!submission) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (submission.status !== 'changes_requested') {
     return NextResponse.json({ error: 'Submission must be in changes_requested status to resubmit' }, { status: 400 })
@@ -23,9 +23,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   // Bump version but keep as draft — user will explicitly click "Send for Review"
   const newVersion = submission.version + 1
-  const updated = updateSubmission(params.id, { version: newVersion, status: 'draft', current_step: null })
+  const updated = await updateSubmission(params.id, { version: newVersion, status: 'draft', current_step: null })
 
-  const currentCount = getDesignCount(params.id)
+  const currentCount = await getDesignCount(params.id)
   const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
   const inserted = []
 
@@ -40,7 +40,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const orderIndex = currentCount + i
     const variationLabel = labels[i] ?? `V${i + 1}`
 
-    const design = addDesign({
+    const design = await addDesign({
       submission_id: params.id,
       filename,
       original_name: file.name,

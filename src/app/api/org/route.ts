@@ -5,10 +5,10 @@ export async function GET(request: NextRequest) {
   const orgId = request.headers.get('x-org-id')
   if (!orgId) return NextResponse.json({ error: 'No organization found' }, { status: 404 })
 
-  const org = getOrg(orgId)
+  const org = await getOrg(orgId)
   if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
 
-  const invitations = getAllInvitations(orgId)
+  const invitations = await getAllInvitations(orgId)
   return NextResponse.json({ org, invitations })
 }
 
@@ -19,7 +19,7 @@ export async function PUT(request: NextRequest) {
   if (!orgId) return NextResponse.json({ error: 'No organization found' }, { status: 404 })
 
   const updates = await request.json()
-  const org = updateOrg(orgId, { name: updates.name, domain: updates.domain })
+  const org = await updateOrg(orgId, { name: updates.name, domain: updates.domain })
   return NextResponse.json({ org })
 }
 
@@ -29,7 +29,7 @@ export async function DELETE(request: NextRequest) {
 
   const { invitation_id } = await request.json()
   if (invitation_id) {
-    deleteInvitation(invitation_id)
+    await deleteInvitation(invitation_id)
     return NextResponse.json({ ok: true })
   }
   return NextResponse.json({ error: 'invitation_id required' }, { status: 400 })

@@ -3,19 +3,19 @@ import { getSubmission, updateSubmission, getDesignCount, getWorkflowStep, getTo
 import { sendReviewEmail } from '@/lib/email'
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const submission = getSubmission(params.id)
+  const submission = await getSubmission(params.id)
   if (!submission) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (submission.status !== 'draft' && submission.status !== 'changes_requested') {
     return NextResponse.json({ error: 'Already in review or approved' }, { status: 400 })
   }
-  if (getDesignCount(params.id) === 0) {
+  if (await getDesignCount(params.id) === 0) {
     return NextResponse.json({ error: 'Upload at least one design first' }, { status: 400 })
   }
 
   // For resubmissions (version > 1), route back to the reviewer who requested changes
   let targetStep = 1
   if (submission.version > 1) {
-    const allReviews = getReviews(params.id)
+    const allReviews = await getReviews(params.id)
     const changesReview = allReviews.find(
       r => r.action === 'changes_requested' && r.version === submission.version - 1
     )
@@ -24,13 +24,14 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     }
   }
 
-  const updated = updateSubmission(params.id, { status: 'in_review', current_step: targetStep })
+  const updated = await updateSubmission(params.id, { status: 'in_review', current_step: targetStep })
 
   // Bust review cache for all users so the reviewer sees the new pending item immediately
-  getAllUsers().forEach(u => clearUserReviewCache(u.id))
+  const allUsers = await getAllUsers()
+  allUsers.forEach(u => clearUserReviewCache(u.id))
 
-  const step = getWorkflowStep(submission.workflow_id, targetStep)
-  const total = getTotalSteps(submission.workflow_id)
+  const step = await getWorkflowStep(submission.workflow_id, targetStep)
+  const total = await getTotalSteps(submission.workflow_id)
   const isResubmission = submission.version > 1
 
   if (step?.user) {
@@ -48,7 +49,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       console.error('[email] Failed to notify reviewer:', err)
     })
     // In-app notification for the target reviewer
-    createNotification({
+    await createNotification({
       user_id: step.user.id,
       type: 'review_needed',
       title: isResubmission
@@ -62,9 +63,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   }
 
   // In-app notification for all admins
-  const allUsers = getAllUsers()
   for (const admin of allUsers.filter(u => u.role === 'admin')) {
-    createNotification({
+    await createNotification({
       user_id: admin.id,
       type: 'review_needed',
       title: isResubmission

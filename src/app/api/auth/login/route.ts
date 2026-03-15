@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
-    const user = getUserByEmail(email.toLowerCase().trim())
+    const user = await getUserByEmail(email.toLowerCase().trim())
     if (!user) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       name: user.name, email: user.email,
     })
 
-    createSession(user.id, jti, expiresAt)
+    await createSession(user.id, jti, expiresAt)
 
     const response = NextResponse.json({
       user: { id: user.id, name: user.name, email: user.email, role: user.role, org_id: user.org_id }

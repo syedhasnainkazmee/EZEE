@@ -5,6 +5,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const userId = request.headers.get('x-user-id')
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  markNotificationRead(params.id, userId)
+  await markNotificationRead(params.id, userId)
   return NextResponse.json({ ok: true })
 }

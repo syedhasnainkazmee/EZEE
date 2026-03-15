@@ -13,33 +13,34 @@ export async function POST(req: Request, { params }: { params: { token: string; 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   }
 
-  const user = getUserByToken(params.token)
+  const user = await getUserByToken(params.token)
   if (!user) return NextResponse.json({ error: 'Invalid review link' }, { status: 404 })
 
-  const submission = getSubmission(params.submissionId)
+  const submission = await getSubmission(params.submissionId)
   if (!submission) return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
 
   // Verify this user is the current step's reviewer
-  const currentStep = getWorkflowStep(submission.workflow_id, submission.current_step ?? -1)
+  const currentStep = await getWorkflowStep(submission.workflow_id, submission.current_step ?? -1)
   if (!currentStep || currentStep.user_id !== user.id) {
     return NextResponse.json({ error: 'This submission is not currently at your review step' }, { status: 400 })
   }
 
-  upsertReview(params.submissionId, user.id, submission.version, action, comment ?? '')
+  await upsertReview(params.submissionId, user.id, submission.version, action, comment ?? '')
   // Bust every user's review cache so the updated status is visible immediately
-  getAllUsers().forEach(u => clearUserReviewCache(u.id))
+  const allUsersForCache = await getAllUsers()
+  allUsersForCache.forEach(u => clearUserReviewCache(u.id))
 
-  const total = getTotalSteps(submission.workflow_id)
+  const total = await getTotalSteps(submission.workflow_id)
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
   const submissionUrl = `${baseUrl}/submission/${submission.id}`
-  const allUsers = getAllUsers()
+  const allUsers = await getAllUsers()
   const admins = allUsers.filter(u => u.role === 'admin')
 
   if (action === 'approved') {
-    const next = getNextWorkflowStep(submission.workflow_id, submission.current_step!)
+    const next = await getNextWorkflowStep(submission.workflow_id, submission.current_step!)
     if (next?.user) {
-      updateSubmission(params.submissionId, { current_step: next.step })
+      await updateSubmission(params.submissionId, { current_step: next.step })
       // Email next reviewer (always — functional email, review can't proceed otherwise)
       sendReviewEmail({
         to: next.user.email,
@@ -56,7 +57,7 @@ export async function POST(req: Request, { params }: { params: { token: string; 
         console.error('[email] Failed to notify next reviewer:', err)
       })
       // In-app notification for next reviewer
-      createNotification({
+      await createNotification({
         user_id: next.user.id,
         type: 'review_needed',
         title: `Review needed: "${submission.title}"`,
@@ -64,10 +65,10 @@ export async function POST(req: Request, { params }: { params: { token: string; 
         href: `/review/${next.user.token}`,
       })
     } else {
-      updateSubmission(params.submissionId, { status: 'approved', current_step: null })
+      await updateSubmission(params.submissionId, { status: 'approved', current_step: null })
       console.log(`[email] Submission "${submission.title}" fully approved.`)
 
-      const workflow = getWorkflow(submission.workflow_id)
+      const workflow = await getWorkflow(submission.workflow_id)
       // Email admins + reviewers who have notify_email enabled
       const reviewerUsers = (workflow?.steps.map(s => s.user).filter(Boolean) ?? []) as typeof allUsers
       const toNotify = Array.from(
@@ -84,7 +85,7 @@ export async function POST(req: Request, { params }: { params: { token: string; 
       }).catch(err => console.error('[email] Failed to send final approvals:', err))
       // In-app notification for all admins
       for (const admin of admins) {
-        createNotification({
+        await createNotification({
           user_id: admin.id,
           type: 'submission_approved',
           title: `Approved: "${submission.title}"`,
@@ -95,13 +96,13 @@ export async function POST(req: Request, { params }: { params: { token: string; 
     }
   } else {
     // changes_requested
-    updateSubmission(params.submissionId, { status: 'changes_requested', current_step: null })
+    await updateSubmission(params.submissionId, { status: 'changes_requested', current_step: null })
 
     // Notify the submitter
     if (submission.submitted_by) {
-      const submitter = getUserById(submission.submitted_by)
+      const submitter = await getUserById(submission.submitted_by)
       if (submitter) {
-        createNotification({
+        await createNotification({
           user_id: submitter.id,
           type: 'changes_requested',
           title: `Changes requested: "${submission.title}"`,
@@ -123,7 +124,7 @@ export async function POST(req: Request, { params }: { params: { token: string; 
 
     // Notify all admins (in-app + email if enabled)
     for (const admin of admins) {
-      createNotification({
+      await createNotification({
         user_id: admin.id,
         type: 'changes_requested',
         title: `Changes requested: "${submission.title}"`,
@@ -143,5 +144,5 @@ export async function POST(req: Request, { params }: { params: { token: string; 
     }
   }
 
-  return NextResponse.json({ submission: getSubmission(params.submissionId) })
+  return NextResponse.json({ submission: await getSubmission(params.submissionId) })
 }

@@ -7,12 +7,12 @@ export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token')
   if (!token) return NextResponse.json({ error: 'Token required' }, { status: 400 })
 
-  const inv = getInvitation(token)
+  const inv = await getInvitation(token)
   if (!inv) return NextResponse.json({ error: 'Invalid invitation token' }, { status: 404 })
   if (inv.used) return NextResponse.json({ error: 'This invitation has already been used' }, { status: 410 })
   if (new Date(inv.expires_at) < new Date()) return NextResponse.json({ error: 'Invitation has expired' }, { status: 410 })
 
-  const org = getOrg(inv.org_id)
+  const org = await getOrg(inv.org_id)
   return NextResponse.json({
     email: inv.email,
     role: inv.role,
@@ -30,28 +30,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     }
 
-    const inv = getInvitation(token)
+    const inv = await getInvitation(token)
     if (!inv) return NextResponse.json({ error: 'Invalid invitation token' }, { status: 404 })
     if (inv.used) return NextResponse.json({ error: 'This invitation has already been used' }, { status: 410 })
     if (new Date(inv.expires_at) < new Date()) return NextResponse.json({ error: 'Invitation has expired' }, { status: 410 })
 
     const password_hash = await hashPassword(password)
-    consumeInvitation(token)
+    await consumeInvitation(token)
 
     // Either update existing user or create new one
-    const existingUser = getUserByEmail(inv.email)
+    const existingUser = await getUserByEmail(inv.email)
     let user
     if (existingUser) {
-      updateUser(existingUser.id, { name, password_hash })
+      await updateUser(existingUser.id, { name, password_hash })
       // Also set org_id directly since it's not in updateUser's Pick type
-      user = getUserById(existingUser.id) ?? null
+      user = await getUserById(existingUser.id) ?? null
     } else {
-      user = createUser(name, inv.email, inv.role, { org_id: inv.org_id, password_hash })
+      user = await createUser(name, inv.email, inv.role, { org_id: inv.org_id, password_hash })
     }
 
     if (!user) return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
 
-    const org = getOrg(inv.org_id)
+    const org = await getOrg(inv.org_id)
     // Welcome email to new user (always — functional account-creation email)
     sendWelcomeEmail({
       to: user.email,
@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
     }).catch(err => console.error('[email] Failed to send welcome email:', err))
 
     // In-app notification for all admins that a new member joined
-    const allUsers = getAllUsers()
+    const allUsers = await getAllUsers()
     for (const admin of allUsers.filter(u => u.role === 'admin' && u.id !== user!.id)) {
-      createNotification({
+      await createNotification({
         user_id: admin.id,
         type: 'invited',
         title: `New member joined: ${user.name}`,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const { token: jwt, jti, expiresAt } = createSessionToken({
       id: user.id, org_id: user.org_id, role: user.role, name: user.name, email: user.email,
     })
-    createSession(user.id, jti, expiresAt)
+    await createSession(user.id, jti, expiresAt)
 
     const response = NextResponse.json({
       user: { id: user.id, name: user.name, email: user.email, role: user.role, org_id: user.org_id },

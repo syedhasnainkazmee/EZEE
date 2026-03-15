@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const unreadOnly = request.nextUrl.searchParams.get('unread') === 'true'
-  const notifications = getNotifications(userId, unreadOnly)
+  const notifications = await getNotifications(userId, unreadOnly)
   const unread_count = notifications.filter(n => !n.read).length
 
   return NextResponse.json({ notifications, unread_count })
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   const { action } = await request.json()
   if (action === 'read_all') {
-    markAllNotificationsRead(userId)
+    await markAllNotificationsRead(userId)
     return NextResponse.json({ ok: true })
   }
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
