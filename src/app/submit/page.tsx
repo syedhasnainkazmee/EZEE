@@ -78,21 +78,32 @@ export default function SubmitPage() {
       })
       const { submission, error: e } = await res.json()
       if (e) throw new Error(e)
+
+      const uploaded = []
       for (let i = 0; i < files.length; i++) {
         const f = files[i]
         const ext = f.file.name.split('.').pop() || 'png'
-        await upload(`designs/${crypto.randomUUID()}.${ext}`, f.file, {
+        const blob = await upload(`designs/${crypto.randomUUID()}.${ext}`, f.file, {
           access: 'public',
           handleUploadUrl: '/api/upload',
-          clientPayload: JSON.stringify({
-            submissionId: submission.id,
-            orderIndex: i,
-            variationLabel: LABELS[i],
-            originalName: f.file.name,
-            version: submission.version,
-          }),
+        })
+        uploaded.push({
+          blobUrl: blob.url,
+          originalName: f.file.name,
+          variationLabel: LABELS[i],
+          orderIndex: i,
+          version: submission.version,
         })
       }
+
+      const saveRes = await fetch('/api/designs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: submission.id, designs: uploaded }),
+      })
+      const saveData = await saveRes.json()
+      if (saveData.error) throw new Error(saveData.error)
+
       router.push(`/submission/${submission.id}`)
     } catch (e: any) {
       setError(e.message || 'Something went wrong.')
