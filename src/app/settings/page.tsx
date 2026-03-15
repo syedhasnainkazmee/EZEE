@@ -1,9 +1,6 @@
 'use client'
 import { useState, useEffect, FormEvent } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
-
-export const dynamic = 'force-dynamic'
 
 type Invitation = {
   id: string; email: string; role: string
@@ -26,8 +23,6 @@ type Integration = {
 
 export default function SettingsPage() {
   const { user, refetch }    = useAuth()
-  const router               = useRouter()
-  const searchParams         = useSearchParams()
   const [tab, setTab]        = useState<'profile' | 'notifications' | 'org' | 'integrations'>('profile')
   const [integrationMsg, setIntegrationMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
@@ -171,16 +166,17 @@ export default function SettingsPage() {
       })
   }, [user?.email])
 
-  // Handle OAuth callback query params
+  // Handle OAuth callback query params — read from window.location (client-only, never prerendered)
   useEffect(() => {
-    const connected = searchParams.get('gdrive_connected')
-    const error     = searchParams.get('gdrive_error')
-    const tabParam  = searchParams.get('tab')
+    const params    = new URLSearchParams(window.location.search)
+    const connected = params.get('gdrive_connected')
+    const error     = params.get('gdrive_error')
+    const tabParam  = params.get('tab')
     if (tabParam === 'integrations') setTab('integrations')
     if (connected) {
       setIntegrationMsg({ text: 'Google Drive connected successfully!', ok: true })
       setTimeout(() => setIntegrationMsg(null), 5000)
-      router.replace('/settings?tab=integrations')
+      window.history.replaceState({}, '', '/settings?tab=integrations')
     } else if (error) {
       const messages: Record<string, string> = {
         access_denied:  'Access was denied. Please try again.',
@@ -189,9 +185,9 @@ export default function SettingsPage() {
       }
       setIntegrationMsg({ text: messages[error] ?? 'Something went wrong. Please try again.', ok: false })
       setTimeout(() => setIntegrationMsg(null), 6000)
-      router.replace('/settings?tab=integrations')
+      window.history.replaceState({}, '', '/settings?tab=integrations')
     }
-  }, [searchParams, router])
+  }, [])
 
   async function toggleIntegration(id: string) {
     const item = integrations.find(i => i.id === id)
