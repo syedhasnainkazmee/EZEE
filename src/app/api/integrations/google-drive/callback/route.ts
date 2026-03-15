@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state')
   const error = searchParams.get('error')
 
-  const baseUrl     = process.env.NEXT_PUBLIC_BASE_URL ?? request.nextUrl.origin
+  const baseUrl     = (process.env.NEXT_PUBLIC_BASE_URL ?? request.nextUrl.origin).replace(/\/$/, '')
   const settingsUrl = `${baseUrl}/settings?tab=integrations`
 
   if (error) {

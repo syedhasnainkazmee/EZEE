@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   const state       = randomUUID()
-  const baseUrl     = process.env.NEXT_PUBLIC_BASE_URL ?? request.nextUrl.origin
+  const baseUrl     = (process.env.NEXT_PUBLIC_BASE_URL ?? request.nextUrl.origin).replace(/\/$/, '')
   const redirectUri = `${baseUrl}/api/integrations/google-drive/callback`
 
   const params = new URLSearchParams({
