@@ -71,6 +71,7 @@ export const submissions = sqliteTable('submissions', {
   current_step: integer('current_step'),
   version:          integer('version').notNull().default(1),
   drive_folder_url: text('drive_folder_url'),
+  tags:             text('tags'),  // JSON array of tag strings e.g. '["Instagram Story","Banner"]'
   created_at:       text('created_at').notNull(),
 })
 

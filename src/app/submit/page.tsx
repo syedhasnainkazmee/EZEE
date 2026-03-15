@@ -20,12 +20,19 @@ type TaskOption    = { id: string; title: string; project_name: string }
 const LABELS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','P']
 const MAX_CONCURRENT = 3
 
+const TAG_OPTIONS = [
+  'Instagram Story', 'Instagram Post', 'Facebook Ad', 'Facebook Post',
+  'LinkedIn Post', 'Twitter/X Post', 'Email Header', 'Banner',
+  'Logo', 'Branding', 'Print', 'Presentation', 'Web Design', 'Other',
+]
+
 export default function SubmitPage() {
   const router = useRouter()
   const [title, setTitle]           = useState('')
   const [description, setDescription] = useState('')
   const [workflowId, setWorkflowId] = useState('')
   const [taskId, setTaskId]         = useState<string | null>(null)
+  const [tags, setTags]             = useState<string[]>([])
   const [workflows, setWorkflows]   = useState<WorkflowOption[]>([])
   const [tasks, setTasks]           = useState<TaskOption[]>([])
   const [loadingWf, setLoadingWf]   = useState(true)
@@ -180,7 +187,7 @@ export default function SubmitPage() {
       const res = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), description: description.trim(), workflow_id: workflowId, task_id: taskId }),
+        body: JSON.stringify({ title: title.trim(), description: description.trim(), workflow_id: workflowId, task_id: taskId, tags }),
       })
       const { submission, error: e } = await res.json()
       if (e) throw new Error(e)
@@ -311,6 +318,33 @@ export default function SubmitPage() {
                 {selectedWorkflow.description}
               </p>
             )}
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-[11px] font-bold text-p-tertiary mb-2 uppercase tracking-wide">
+              Content Type <span className="text-p-quaternary normal-case tracking-normal font-medium">— Optional</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {TAG_OPTIONS.map(tag => {
+                const active = tags.includes(tag)
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setTags(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])}
+                    className="text-[12px] font-semibold px-3 py-1.5 rounded-full border-2 transition-all duration-150"
+                    style={{
+                      borderColor: active ? '#D4512E' : 'transparent',
+                      background:  active ? 'rgba(212,81,46,0.08)' : 'rgba(0,0,0,0.05)',
+                      color:       active ? '#D4512E' : '#6B6560',
+                    }}
+                  >
+                    {tag}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 

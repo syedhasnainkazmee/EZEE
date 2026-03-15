@@ -56,7 +56,7 @@ export type Submission = {
   task_id: string | null; submitted_by: string | null
   status: 'draft' | 'in_review' | 'approved' | 'changes_requested'
   current_step: number | null; version: number
-  drive_folder_url: string | null; created_at: string
+  drive_folder_url: string | null; tags: string | null; created_at: string
 }
 
 export type Design = {
@@ -544,11 +544,11 @@ export async function getSubmission(id: string): Promise<Submission | undefined>
   return await db.select().from(submissionsTable).where(eq(submissionsTable.id, id)).get() as Submission | undefined
 }
 
-export async function createSubmission(title: string, description: string, workflow_id: string, task_id?: string | null, submitted_by?: string | null): Promise<Submission> {
+export async function createSubmission(title: string, description: string, workflow_id: string, task_id?: string | null, submitted_by?: string | null, tags?: string | null): Promise<Submission> {
   const sub: Submission = {
     id: randomUUID(), title, description, workflow_id, task_id: task_id ?? null,
     submitted_by: submitted_by ?? null,
-    status: 'draft', current_step: null, version: 1, drive_folder_url: null, created_at: new Date().toISOString(),
+    status: 'draft', current_step: null, version: 1, drive_folder_url: null, tags: tags ?? null, created_at: new Date().toISOString(),
   }
   await db.insert(submissionsTable).values(sub).run()
   cacheDelete(CK.submissions())
@@ -559,6 +559,38 @@ export async function updateSubmission(id: string, updates: Partial<Submission>)
   await db.update(submissionsTable).set(updates).where(eq(submissionsTable.id, id)).run()
   cacheDelete(CK.submissions())
   return await getSubmission(id) ?? null
+}
+
+export type LibraryItem = {
+  id: string; title: string; description: string; tags: string[]
+  drive_folder_url: string | null; created_at: string
+  submitter_name: string | null; workflow_name: string
+  thumbnail: string | null; design_count: number
+}
+
+export async function getLibrarySubmissions(): Promise<LibraryItem[]> {
+  const allSubs    = await db.select().from(submissionsTable).where(eq(submissionsTable.status, 'approved')).orderBy(desc(submissionsTable.created_at)).all()
+  const allUsers   = await db.select().from(usersTable).all()
+  const allWf      = await db.select().from(workflowsTable).all()
+  const allDesigns = await db.select().from(designsTable).all()
+
+  return allSubs.map(sub => {
+    const submitter = sub.submitted_by ? allUsers.find(u => u.id === sub.submitted_by) ?? null : null
+    const workflow  = allWf.find(w => w.id === sub.workflow_id)
+    const designs   = allDesigns.filter(d => d.submission_id === sub.id).sort((a, b) => a.order_index - b.order_index)
+    return {
+      id:               sub.id,
+      title:            sub.title,
+      description:      sub.description,
+      tags:             sub.tags ? JSON.parse(sub.tags) : [],
+      drive_folder_url: sub.drive_folder_url,
+      created_at:       sub.created_at,
+      submitter_name:   submitter?.name ?? null,
+      workflow_name:    workflow?.name ?? '',
+      thumbnail:        designs[0]?.filename ?? null,
+      design_count:     designs.length,
+    }
+  })
 }
 
 // ── Designs ────────────────────────────────────────────────────────────────

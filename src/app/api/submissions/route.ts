@@ -8,10 +8,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const userId = (req as any).headers.get('x-user-id') ?? null
-  const { title, description, workflow_id, task_id } = await req.json()
+  const { title, description, workflow_id, task_id, tags } = await req.json()
   if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
   if (!workflow_id) return NextResponse.json({ error: 'workflow_id is required' }, { status: 400 })
-  const submission = await createSubmission(title.trim(), description?.trim() ?? '', workflow_id, task_id, userId)
+  const tagsJson = Array.isArray(tags) && tags.length > 0 ? JSON.stringify(tags) : null
+  const submission = await createSubmission(title.trim(), description?.trim() ?? '', workflow_id, task_id, userId, tagsJson)
 
   if (task_id) {
     await updateTaskStatus(task_id, 'in_review')
