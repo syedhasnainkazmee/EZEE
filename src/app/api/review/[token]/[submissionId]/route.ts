@@ -66,10 +66,9 @@ export async function POST(req: Request, { params }: { params: { token: string; 
         href: `/review/${next.user.token}`,
       })
     } else {
-      await updateSubmission(params.submissionId, { status: 'approved', current_step: null })
-      console.log(`[email] Submission "${submission.title}" fully approved.`)
+      console.log(`[review] Submission "${submission.title}" fully approved.`)
 
-      // Upload designs to Google Drive — await folder creation to get shareable URL
+      // Upload to Drive FIRST — so the folder URL is included in the single status update below
       let driveFolderUrl: string | null = null
       if (user.org_id) {
         const [designs, task] = await Promise.all([
@@ -82,10 +81,14 @@ export async function POST(req: Request, { params }: { params: { token: string; 
           taskTitle:       task?.title ?? null,
           designs,
         }).catch(err => { console.error('[drive] Upload failed:', err); return null })
-        if (driveFolderUrl) {
-          await updateSubmission(params.submissionId, { drive_folder_url: driveFolderUrl })
-        }
       }
+
+      // Single update: set approved + drive_folder_url together so SSE fires once with everything ready
+      await updateSubmission(params.submissionId, {
+        status: 'approved',
+        current_step: null,
+        ...(driveFolderUrl ? { drive_folder_url: driveFolderUrl } : {}),
+      })
 
       const workflow = await getWorkflow(submission.workflow_id)
       // Email admins + reviewers who have notify_email enabled

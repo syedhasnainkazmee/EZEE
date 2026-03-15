@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
               if (sub.status !== lastStatus || (sub.current_step ?? 0) !== lastStep) {
                 lastStatus = sub.status
                 lastStep = sub.current_step ?? 0
-                send('submission', { status: sub.status, current_step: sub.current_step, version: sub.version })
+                send('submission', { status: sub.status, current_step: sub.current_step, version: sub.version, drive_folder_url: sub.drive_folder_url })
               }
             }
           }

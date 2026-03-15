@@ -64,7 +64,8 @@ export default function SubmissionDetail() {
 
   // Real-time status updates via SSE
   useEffect(() => {
-    if (data?.submission?.status === 'approved') return
+    // Keep listening if approved but drive_folder_url not yet set
+    if (data?.submission?.status === 'approved' && data?.submission?.drive_folder_url) return
     let es: EventSource | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -79,7 +80,7 @@ export default function SubmissionDetail() {
 
     connect()
     return () => { es?.close(); if (timer) clearTimeout(timer) }
-  }, [id, data?.submission?.status])
+  }, [id, data?.submission?.status, data?.submission?.drive_folder_url])
 
   async function sendForReview() {
     setSending(true)
