@@ -160,8 +160,13 @@ export const notifications = sqliteTable('notifications', {
 
 // ── Database instance ──────────────────────────────────────────────────────
 
+// Use https:// for serverless environments (Vercel) — more reliable than WebSockets.
+// libsql:// is auto-converted; file: URLs for local dev are passed through unchanged.
+const rawUrl = process.env.TURSO_DATABASE_URL ?? 'file:./design-review.db'
+const url = rawUrl.startsWith('libsql://') ? rawUrl.replace('libsql://', 'https://') : rawUrl
+
 const client = createClient({
-  url: process.env.TURSO_DATABASE_URL ?? 'file:./design-review.db',
+  url,
   authToken: process.env.TURSO_AUTH_TOKEN,
 })
 
