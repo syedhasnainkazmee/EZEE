@@ -124,6 +124,11 @@ export const designs = sqliteTable('designs', {
   variation_label: text('variation_label').notNull(),
   order_index:     integer('order_index').notNull(),
   version:         integer('version').notNull().default(1),
+  prompt:          text('prompt'),
+  liked:           integer('liked', { mode: 'boolean' }).notNull().default(false),
+  model:           text('model'),           // 'flux' | 'sd3-medium' | 'sd3-large'
+  concept_notes:   text('concept_notes'),   // Kimi's reasoning: why this concept, who it targets
+  copy:            text('copy'),            // JSON: { headline, body } — ready-to-use ad copy
 })
 
 export const reviews = sqliteTable('reviews', {

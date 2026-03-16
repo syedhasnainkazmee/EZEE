@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { eq, and, asc, desc } from 'drizzle-orm'
+import { eq, and, asc, desc, sql } from 'drizzle-orm'
 import {
   db,
   organizations   as orgsTable,
@@ -62,6 +62,7 @@ export type Submission = {
 export type Design = {
   id: string; submission_id: string; filename: string
   original_name: string; variation_label: string; order_index: number; version: number
+  prompt?: string | null; liked?: boolean; model?: string | null; concept_notes?: string | null; copy?: string | null
 }
 
 export type Review = {
@@ -610,6 +611,55 @@ export async function addDesign(data: Omit<Design, 'id'>): Promise<Design> {
 
 export async function getDesignCount(submission_id: string): Promise<number> {
   return (await db.select().from(designsTable).where(eq(designsTable.submission_id, submission_id)).all()).length
+}
+
+export async function toggleDesignLike(design_id: string): Promise<boolean> {
+  const rows = await db.select().from(designsTable).where(eq(designsTable.id, design_id)).all()
+  if (!rows[0]) throw new Error('Design not found')
+  // liked is stored as integer 0/1 in SQLite; rows[0].liked may be 0, 1, true, or false
+  const currentlyLiked = rows[0].liked === true || (rows[0].liked as unknown as number) === 1
+  const newVal = !currentlyLiked
+  await db.update(designsTable).set({ liked: newVal }).where(eq(designsTable.id, design_id)).run()
+  return newVal
+}
+
+// Returns liked agent designs — distilled to style signals when count is large
+export async function getLikedAgentDesigns(): Promise<{
+  examples: { concept: string; prompt: string }[]
+  totalLiked: number
+}> {
+  const rows = await db.select().from(designsTable)
+    .where(sql`${designsTable.liked} = 1`)
+    .all()
+
+  const valid = rows.filter(d => d.prompt)
+  const total = valid.length
+
+  if (total === 0) return { examples: [], totalLiked: 0 }
+
+  // Under 8: inject up to 5 full examples (recent)
+  if (total <= 8) {
+    return {
+      examples: valid.slice(-5).map(d => ({
+        concept: d.original_name ?? 'Liked design',
+        prompt:  d.prompt!,
+      })),
+      totalLiked: total,
+    }
+  }
+
+  // Over 8: pick 5 maximally diverse examples — spread across the full liked history
+  // by sampling at even intervals so early + recent liked both represented
+  const step = Math.floor(valid.length / 5)
+  const sampled = [0, 1, 2, 3, 4].map(i => valid[Math.min(i * step, valid.length - 1)])
+
+  return {
+    examples: sampled.map(d => ({
+      concept: d.original_name ?? 'Liked design',
+      prompt:  d.prompt!,
+    })),
+    totalLiked: total,
+  }
 }
 
 // ── Reviews ────────────────────────────────────────────────────────────────

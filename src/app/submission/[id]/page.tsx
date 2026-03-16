@@ -5,7 +5,7 @@ import Link from 'next/link'
 import AnnotationCanvas from '@/components/AnnotationCanvas'
 import { useAuth } from '@/components/AuthProvider'
 
-type Design = { id: string; filename: string; original_name: string; variation_label: string; order_index: number; version: number }
+type Design = { id: string; filename: string; original_name: string; variation_label: string; order_index: number; version: number; liked?: boolean; model?: string | null; concept_notes?: string | null; copy?: string | null }
 type Reviewer = { id: string; name: string; role: string; focus: string; step: number; token: string }
 type Review = {
   id: string; submission_id: string; reviewer_id: string; action: string | null
@@ -16,7 +16,8 @@ type Annotation = { id: string; design_id: string; x: number; y: number; comment
 type Submission = {
   id: string; title: string; description: string; status: string
   current_step: number | null; created_at: string; version: number
-  drive_folder_url?: string | null
+  drive_folder_url?: string | null; submitted_by?: string | null
+  workflow_id?: string | null; task_id?: string | null; tags?: string | null
 }
 
 const STATUS: Record<string, { label: string; dot: string; bg: string; text: string }> = {
@@ -41,6 +42,8 @@ export default function SubmissionDetail() {
   const [canvas, setCanvas] = useState<number | null>(null)
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [resubmitting, setResubmitting] = useState(false)
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
+  const [regenStep, setRegenStep] = useState<'idle' | 'prompting' | 'generating' | 'uploading' | 'done' | 'error'>('idle')
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
@@ -57,7 +60,21 @@ export default function SubmissionDetail() {
       if (selectedVersion === null && subData.submission) {
         setSelectedVersion(subData.submission.version)
       }
+      // Initialise liked set from DB state
+      const liked = new Set<string>((subData.designs ?? []).filter((d: Design) => d.liked).map((d: Design) => d.id))
+      setLikedIds(liked)
     }).finally(() => setLoading(false))
+  }
+
+  async function toggleLike(designId: string) {
+    const res = await fetch(`/api/designs/${designId}/like`, { method: 'POST' })
+    if (!res.ok) return
+    const { liked } = await res.json()
+    setLikedIds(prev => {
+      const next = new Set(prev)
+      liked ? next.add(designId) : next.delete(designId)
+      return next
+    })
   }
 
   useEffect(() => { load() }, [id])
@@ -126,6 +143,38 @@ export default function SubmissionDetail() {
     setResubmitting(false)
   }
 
+  async function regenerate() {
+    if (!data) return
+    const { submission: sub } = data
+    if (!sub.workflow_id) return
+    setRegenStep('prompting')
+    const tags = sub.tags ? (() => { try { return JSON.parse(sub.tags!) } catch { return [] } })() : []
+    const cleanTitle = sub.title.replace(/^\[AI\]\s*/i, '')
+    const payload = { title: cleanTitle, description: sub.description, tags, task_id: sub.task_id, workflow_id: sub.workflow_id }
+    try {
+      const r1 = await fetch('/api/agent/designer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, step: 'concepts' }),
+      })
+      const d1 = await r1.json()
+      if (!r1.ok || d1.error) { setRegenStep('error'); return }
+      setRegenStep('generating')
+      const r2 = await fetch('/api/agent/designer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, step: 'render', concepts: d1.concepts }),
+      })
+      setRegenStep('uploading')
+      const d2 = await r2.json()
+      if (!r2.ok || d2.error) { setRegenStep('error'); return }
+      setRegenStep('done')
+      window.location.href = `/submission/${d2.submissionId}`
+    } catch {
+      setRegenStep('error')
+    }
+  }
+
   if (loading) return (
     <div className="flex-1 bg-p-bg flex items-center justify-center">
       <div className="flex items-center gap-2.5 text-p-tertiary text-sm">
@@ -145,6 +194,7 @@ export default function SubmissionDetail() {
 
   const { submission, designs: allDesigns, reviews: allReviews, reviewers } = data
   const st = STATUS[submission.status] ?? STATUS.draft
+  const isAgentSubmission = submission.submitted_by === 'ai-designer-agent'
   const viewVersion = selectedVersion ?? submission.version
 
   const designs = allDesigns.filter(d => d.version === viewVersion)
@@ -165,6 +215,69 @@ export default function SubmissionDetail() {
 
   return (
     <div className="flex-1 bg-p-bg">
+      {/* Regeneration progress modal */}
+      {regenStep !== 'idle' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-modal p-8 w-[360px] flex flex-col items-center gap-6">
+            <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="text-violet-600">
+                <path d="M12 2a1 1 0 01.894.553l2.184 4.424 4.882.71a1 1 0 01.554 1.706l-3.532 3.442.834 4.862a1 1 0 01-1.451 1.054L12 16.347l-4.365 2.404a1 1 0 01-1.451-1.054l.834-4.862L3.486 9.393a1 1 0 01.554-1.706l4.882-.71L11.106 2.553A1 1 0 0112 2z"/>
+              </svg>
+            </div>
+            <div className="text-center">
+              <p className="font-bold text-[15px] text-p-text mb-1">
+                {regenStep === 'error' ? 'Generation Failed' : regenStep === 'done' ? 'Done!' : 'Generating New Concepts'}
+              </p>
+              <p className="text-[12px] text-p-tertiary">
+                {regenStep === 'error' ? 'Something went wrong. Please try again.' : regenStep === 'done' ? 'Redirecting to your new designs…' : 'This takes about 60 seconds'}
+              </p>
+            </div>
+            <div className="w-full space-y-2.5">
+              {[
+                { key: 'prompting',   label: 'Developing concepts with Kimi K2' },
+                { key: 'generating',  label: 'Rendering images across models' },
+                { key: 'uploading',   label: 'Saving designs' },
+              ].map(({ key, label }) => {
+                const steps = ['prompting', 'generating', 'uploading', 'done']
+                const stepIdx = steps.indexOf(key)
+                const curIdx  = steps.indexOf(regenStep === 'error' ? 'prompting' : regenStep)
+                const done    = regenStep !== 'error' && curIdx > stepIdx
+                const active  = regenStep !== 'error' && curIdx === stepIdx
+                return (
+                  <div key={key} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-medium transition-all ${
+                    done   ? 'bg-emerald-50 text-emerald-700' :
+                    active ? 'bg-violet-50 text-violet-700'   :
+                             'bg-p-fill text-p-quaternary'
+                  }`}>
+                    <span className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                      {done ? (
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>
+                      ) : active ? (
+                        <svg className="animate-spin" width="14" height="14" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full bg-p-border" />
+                      )}
+                    </span>
+                    {label}
+                  </div>
+                )
+              })}
+            </div>
+            {regenStep === 'error' && (
+              <button
+                onClick={() => setRegenStep('idle')}
+                className="text-[13px] font-bold text-p-secondary hover:text-p-text transition-colors"
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {canvas !== null && canvasDesign && (
         <AnnotationCanvas
           src={canvasDesign.filename}
@@ -195,6 +308,12 @@ export default function SubmissionDetail() {
               <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
               {st.label}
             </span>
+            {isAgentSubmission && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide flex-shrink-0 bg-violet-50 text-violet-700 border border-violet-200">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a1 1 0 01.894.553l2.184 4.424 4.882.71a1 1 0 01.554 1.706l-3.532 3.442.834 4.862a1 1 0 01-1.451 1.054L12 16.347l-4.365 2.404a1 1 0 01-1.451-1.054l.834-4.862L3.486 9.393a1 1 0 01.554-1.706l4.882-.71L11.106 2.553A1 1 0 0112 2z"/></svg>
+                AI Generated
+              </span>
+            )}
             {submission.version > 1 && (
               <select
                 className="ml-2 bg-p-fill border-2 border-p-border text-p-text text-[12px] font-bold px-3 py-1.5 rounded-2xl focus:outline-none focus:border-p-accent/60 cursor-pointer"
@@ -211,19 +330,33 @@ export default function SubmissionDetail() {
             )}
           </div>
 
-          {canSend && (
-            <button
-              onClick={sendForReview}
-              disabled={sending}
-              className="inline-flex items-center gap-2 disabled:opacity-50 text-white text-[13px] font-bold px-5 py-3 rounded-2xl transition-all hover:-translate-y-0.5 active:translate-y-0 flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 4px 14px -3px rgba(212,81,46,0.38)' }}
-            >
-              <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-              </svg>
-              {sending ? 'Sending…' : 'Send for Review'}
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {canSend && isAgentSubmission && (
+              <button
+                onClick={regenerate}
+                disabled={regenStep !== 'idle'}
+                className="inline-flex items-center gap-2 disabled:opacity-50 text-[13px] font-bold px-5 py-3 rounded-2xl transition-all hover:-translate-y-0.5 active:translate-y-0 border-2 border-p-border bg-white text-p-text hover:border-violet-300 hover:text-violet-700 hover:bg-violet-50"
+              >
+                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Generate More
+              </button>
+            )}
+            {canSend && (
+              <button
+                onClick={sendForReview}
+                disabled={sending}
+                className="inline-flex items-center gap-2 disabled:opacity-50 text-white text-[13px] font-bold px-5 py-3 rounded-2xl transition-all hover:-translate-y-0.5 active:translate-y-0"
+                style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 4px 14px -3px rgba(212,81,46,0.38)' }}
+              >
+                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+                {sending ? 'Sending…' : 'Send for Review'}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -282,12 +415,54 @@ export default function SubmissionDetail() {
                           </div>
                         )}
                       </div>
-                      <div className="px-5 py-3.5 border-t-2 border-p-border flex items-center gap-2">
+                      <div className="px-5 pt-3.5 pb-1 border-t-2 border-p-border flex items-center gap-2">
                         <span className="w-6 h-6 rounded-xl bg-p-accent/10 text-p-accent text-[11px] font-bold flex items-center justify-center flex-shrink-0">
                           {design.variation_label}
                         </span>
-                        <span className="text-[12px] text-p-tertiary truncate">{design.original_name}</span>
+                        <span className="text-[12px] text-p-tertiary truncate flex-1">{design.original_name}</span>
+                        {isAgentSubmission && design.model && (
+                          <span className={`flex-shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md ${
+                            design.model === 'flux'
+                              ? 'bg-blue-50 text-blue-600'
+                              : design.model === 'sd3-medium'
+                              ? 'bg-purple-50 text-purple-600'
+                              : 'bg-orange-50 text-orange-600'
+                          }`}>
+                            {design.model === 'flux' ? 'Flux' : design.model === 'sd3-medium' ? 'SD3' : 'SD3.5'}
+                          </span>
+                        )}
+                        {isAgentSubmission && (
+                          <button
+                            onClick={e => { e.stopPropagation(); toggleLike(design.id) }}
+                            title={likedIds.has(design.id) ? 'Remove from agent training' : 'Like — agent learns from this'}
+                            className={`flex-shrink-0 w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
+                              likedIds.has(design.id)
+                                ? 'bg-pink-100 text-pink-500'
+                                : 'bg-p-fill text-p-quaternary hover:bg-pink-50 hover:text-pink-400'
+                            }`}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill={likedIds.has(design.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                            </svg>
+                          </button>
+                        )}
                       </div>
+                      {isAgentSubmission && (() => {
+                        const adCopy = design.copy ? (() => { try { return JSON.parse(design.copy!) } catch { return null } })() : null
+                        return (adCopy?.headline || design.concept_notes) ? (
+                          <div className="px-5 pb-4 pt-1 space-y-1.5 border-t border-p-border/50 mt-1">
+                            {adCopy?.headline && (
+                              <p className="text-[12px] font-bold text-p-text leading-snug">{adCopy.headline}</p>
+                            )}
+                            {adCopy?.body && (
+                              <p className="text-[11px] text-p-secondary leading-relaxed">{adCopy.body}</p>
+                            )}
+                            {design.concept_notes && (
+                              <p className="text-[10px] text-p-quaternary leading-relaxed pt-0.5 line-clamp-2 italic">{design.concept_notes}</p>
+                            )}
+                          </div>
+                        ) : null
+                      })()}
                     </div>
                   )
                 })}

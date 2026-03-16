@@ -206,6 +206,14 @@ export default function Sidebar() {
         </svg>
       ),
     },
+    {
+      name: 'AI Studio', href: '/gallery',
+      icon: (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2a1 1 0 01.894.553l2.184 4.424 4.882.71a1 1 0 01.554 1.706l-3.532 3.442.834 4.862a1 1 0 01-1.451 1.054L12 16.347l-4.365 2.404a1 1 0 01-1.451-1.054l.834-4.862L3.486 9.393a1 1 0 01.554-1.706l4.882-.71L11.106 2.553A1 1 0 0112 2z"/>
+        </svg>
+      ),
+    },
     ...(user?.role === 'admin' ? [{
       name: 'Team Admin', href: '/admin',
       icon: (
