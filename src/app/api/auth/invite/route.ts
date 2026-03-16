@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const org = orgId ? await getOrg(orgId) : null
 
     if (process.env.RESEND_API_KEY) {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL ?? 'EZEE <onboarding@resend.dev>',
         to: cleanEmail,
         subject: `You've been invited to ${org?.name ?? 'EZEE'}`,
@@ -67,6 +67,11 @@ export async function POST(request: NextRequest) {
           </div>
         `,
       })
+      if (error) {
+        console.error('[invite] Resend error:', JSON.stringify(error))
+        return NextResponse.json({ error: `Email delivery failed: ${error.message}` }, { status: 500 })
+      }
+      console.log('[invite] Email sent to', cleanEmail, '— id:', data?.id)
     }
 
     return NextResponse.json({ message: 'Invitation sent', invitation_id: inv.id })
