@@ -2,14 +2,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 
-// ─── Real design images from actual EZEE submissions ─────────────────────────
-const DESIGNS = {
-  emporiaPro:    '/uploads/49c13cf5-9722-4222-afbe-62785a51bc74.png',
-  emporiaClassic:'/uploads/efbc5168-74a2-4e1f-8a45-1dcc4b322a3a.png',
-  jackery:       '/uploads/ed1582ad-a47d-437b-9d91-dbc6850dc648.png',
-  jackery2:      '/uploads/172cdff2-34f7-40ac-83d8-9dd02ab21f2a.png',
-  sunhub:        '/uploads/b25a3173-29c0-44be-9f83-a35536501a7f.png',
-}
+// Placeholder colors for when real images aren't loaded yet
+const PLACEHOLDER_COLORS = ['#D4512E','#8B5CF6','#3B82F6','#0EA572','#F59E0B']
 
 // ─── Animations ───────────────────────────────────────────────────────────────
 const CSS = `
@@ -143,7 +137,8 @@ function StatusBadge({ status }: { status: 'approved' | 'in_review' | 'changes_r
 }
 
 /** The hero app screen — full app with sidebar + submission review */
-function HeroAppScreen() {
+function HeroAppScreen({ imgs }: { imgs: string[] }) {
+  const labels = ['A','B','C','D']
   return (
     <div style={{ animation: 'float-slow 8s ease-in-out infinite', transformOrigin: 'center' }}>
       {/* Browser frame */}
@@ -160,7 +155,7 @@ function HeroAppScreen() {
           {['#FF5F57','#FEBC2E','#28C840'].map(c => <div key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />)}
           <div style={{ flex: 1, margin: '0 10px', background: 'rgba(0,0,0,0.06)', borderRadius: 5, height: 18, display: 'flex', alignItems: 'center', padding: '0 10px', gap: 5 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#0EA572', opacity: 0.8 }} />
-            <span style={{ fontSize: 9.5, color: 'rgba(0,0,0,0.35)', fontFamily: 'monospace' }}>ezee.design/submission/emporia-q4-ads</span>
+            <span style={{ fontSize: 9.5, color: 'rgba(0,0,0,0.35)', fontFamily: 'monospace' }}>ezee.design/submissions</span>
           </div>
         </div>
 
@@ -173,8 +168,8 @@ function HeroAppScreen() {
             {/* Page header */}
             <div style={{ padding: '14px 18px', background: '#FDFCFB', borderBottom: '1px solid #E5E0D8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1917' }}>Emporia Q4 Ads — v2</div>
-                <div style={{ fontSize: 10, color: '#9E9892', marginTop: 1 }}>EV Charger Campaign · 4 designs</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1917' }}>Q4 Campaign Ads — v2</div>
+                <div style={{ fontSize: 10, color: '#9E9892', marginTop: 1 }}>Social Media Campaign · 4 designs</div>
               </div>
               <StatusBadge status="in_review" />
             </div>
@@ -183,16 +178,15 @@ function HeroAppScreen() {
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
               {/* Design grid */}
               <div style={{ flex: 1, padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignContent: 'start', overflowY: 'hidden' }}>
-                {[
-                  { src: DESIGNS.emporiaPro,     label: 'A', note: 1 },
-                  { src: DESIGNS.emporiaClassic, label: 'B' },
-                  { src: DESIGNS.jackery,        label: 'C' },
-                  { src: DESIGNS.jackery2,       label: 'D' },
-                ].map(d => (
-                  <div key={d.label} style={{ background: '#fff', borderRadius: 8, overflow: 'hidden', border: '1.5px solid #E5E0D8', position: 'relative', aspectRatio: '3/4' }}>
-                    <img src={d.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <div style={{ position: 'absolute', bottom: 4, left: 4, fontSize: 8, fontWeight: 800, color: 'white', background: '#D4512E', padding: '1px 5px', borderRadius: 3 }}>{d.label}</div>
-                    {d.note && (
+                {labels.map((label, i) => (
+                  <div key={label} style={{ background: '#fff', borderRadius: 8, overflow: 'hidden', border: '1.5px solid #E5E0D8', position: 'relative', aspectRatio: '3/4' }}>
+                    {imgs[i] ? (
+                      <img src={imgs[i]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${PLACEHOLDER_COLORS[i]}22, ${PLACEHOLDER_COLORS[i]}44)` }} />
+                    )}
+                    <div style={{ position: 'absolute', bottom: 4, left: 4, fontSize: 8, fontWeight: 800, color: 'white', background: '#D4512E', padding: '1px 5px', borderRadius: 3 }}>{label}</div>
+                    {i === 0 && (
                       <div style={{ position: 'absolute', top: 4, right: 4, width: 14, height: 14, borderRadius: '50%', background: '#D4512E', fontSize: 8, color: 'white', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>1</div>
                     )}
                   </div>
@@ -253,7 +247,8 @@ function HeroAppScreen() {
 }
 
 /** The library screen */
-function LibraryScreen() {
+function LibraryScreen({ items }: { items: { thumbnail: string | null; title: string; tags: string[] }[] }) {
+  const cards = items.slice(0, 3)
   return (
     <div style={{
       background: '#FDFCFB', borderRadius: 16, overflow: 'hidden',
@@ -274,7 +269,7 @@ function LibraryScreen() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#1C1917', fontFamily: "'Fraunces', serif" }}>Approved Library</div>
-              <div style={{ fontSize: 10, color: '#9E9892', marginTop: 1 }}>12 approved assets</div>
+              <div style={{ fontSize: 10, color: '#9E9892', marginTop: 1 }}>{items.length} approved assets</div>
             </div>
           </div>
           {/* Filter pills */}
@@ -285,19 +280,23 @@ function LibraryScreen() {
           </div>
           {/* 3-column grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-            {[
-              { src: DESIGNS.emporiaPro,    title: 'Emporia Pro Ad', tag: 'Banner' },
-              { src: DESIGNS.jackery,       title: 'Jackery SolarSaga', tag: 'Instagram Story' },
-              { src: DESIGNS.emporiaClassic,title: 'Emporia Classic', tag: 'Banner' },
-            ].map(c => (
-              <div key={c.title} style={{ background: '#FDFCFB', borderRadius: 10, overflow: 'hidden', border: '1px solid #E5E0D8' }}>
+            {(cards.length > 0 ? cards : [
+              { thumbnail: null, title: 'Campaign Ad', tags: ['Banner'] },
+              { thumbnail: null, title: 'Social Story', tags: ['Instagram Story'] },
+              { thumbnail: null, title: 'Email Header', tags: ['Email Header'] },
+            ]).map((c, i) => (
+              <div key={i} style={{ background: '#FDFCFB', borderRadius: 10, overflow: 'hidden', border: '1px solid #E5E0D8' }}>
                 <div style={{ height: 80, overflow: 'hidden' }}>
-                  <img src={c.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  {c.thumbnail ? (
+                    <img src={c.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${PLACEHOLDER_COLORS[i]}22, ${PLACEHOLDER_COLORS[i]}55)` }} />
+                  )}
                 </div>
                 <div style={{ padding: '7px 8px' }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, color: '#1C1917', marginBottom: 4 }}>{c.title}</div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: '#1C1917', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 8.5, color: '#D4512E', background: 'rgba(212,81,46,0.08)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>{c.tag}</span>
+                    <span style={{ fontSize: 8.5, color: '#D4512E', background: 'rgba(212,81,46,0.08)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>{c.tags[0] ?? 'Design'}</span>
                     <span style={{ fontSize: 8, fontWeight: 700, color: '#0EA572' }}>Drive →</span>
                   </div>
                 </div>
@@ -310,13 +309,23 @@ function LibraryScreen() {
   )
 }
 
+type LibraryItem = { thumbnail: string | null; title: string; tags: string[] }
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false)
-  const [statsOn, setStatsOn]   = useState(false)
+  const [scrolled, setScrolled]         = useState(false)
+  const [statsOn, setStatsOn]           = useState(false)
+  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([])
   const statsRef = useRef<HTMLDivElement>(null)
 
   useReveal()
+
+  useEffect(() => {
+    fetch('/api/library')
+      .then(r => r.json())
+      .then(d => setLibraryItems((d.items ?? []).slice(0, 5)))
+      .catch(() => {/* silently fall back to placeholders */})
+  }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -433,7 +442,7 @@ export default function LandingPage() {
 
           {/* Right — real app screen */}
           <div className="lp-right d1" style={{ position: 'relative' }}>
-            <HeroAppScreen />
+            <HeroAppScreen imgs={libraryItems.map(i => i.thumbnail ?? '')} />
           </div>
         </div>
       </section>
@@ -472,9 +481,13 @@ export default function LandingPage() {
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#1C1917', marginBottom: 4 }}>Emporia Q4 Ads</div>
                 <div style={{ fontSize: 11, color: '#9E9892', marginBottom: 12 }}>Approval Workflow: Full Review Chain</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                  {[DESIGNS.emporiaPro, DESIGNS.jackery].map((src, i) => (
+                  {[libraryItems[0]?.thumbnail, libraryItems[1]?.thumbnail].map((src, i) => (
                     <div key={i} style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E0D8', aspectRatio: '3/4', position: 'relative' }}>
-                      <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {src ? (
+                        <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${PLACEHOLDER_COLORS[i]}22, ${PLACEHOLDER_COLORS[i]}55)` }} />
+                      )}
                       <div style={{ position: 'absolute', top: 4, right: 4, width: 16, height: 16, borderRadius: '50%', background: '#0EA572', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="8" height="8" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
                       </div>
@@ -495,7 +508,11 @@ export default function LandingPage() {
                 </div>
                 <div style={{ padding: 12, position: 'relative' }}>
                   <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E0D8', position: 'relative', marginBottom: 10 }}>
-                    <img src={DESIGNS.emporiaPro} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                    {libraryItems[0]?.thumbnail ? (
+                      <img src={libraryItems[0].thumbnail} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: 120, background: `linear-gradient(135deg, ${PLACEHOLDER_COLORS[0]}22, ${PLACEHOLDER_COLORS[0]}55)` }} />
+                    )}
                     <div style={{ position: 'absolute', top: '30%', left: '60%', width: 20, height: 20, borderRadius: '50% 50% 50% 0', background: '#D4512E', transform: 'rotate(-45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'white', fontWeight: 900, boxShadow: '0 2px 8px rgba(212,81,46,0.4)' }}>
                       <span style={{ transform: 'rotate(45deg)' }}>1</span>
                     </div>
@@ -587,7 +604,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="lp-right d1">
-              <LibraryScreen />
+              <LibraryScreen items={libraryItems} />
             </div>
           </div>
         </div>

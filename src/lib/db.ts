@@ -31,7 +31,7 @@ export type User = {
   id: string; org_id: string | null; name: string; email: string
   role: 'admin' | 'member'; token: string
   password_hash: string | null; notify_email: boolean
-  status: string; created_at: string
+  status: 'active' | 'pending'; created_at: string
 }
 
 export type UserSession = {
@@ -166,7 +166,7 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
 
 export async function createUser(
   name: string, email: string, role: 'admin' | 'member',
-  opts?: { org_id?: string; password_hash?: string; status?: string }
+  opts?: { org_id?: string; password_hash?: string; status?: 'active' | 'pending' }
 ): Promise<User> {
   const slug  = name.toLowerCase().replace(/[^a-z0-9]/g, '')
   const token = `${slug}-${randomUUID().slice(0, 8)}`
