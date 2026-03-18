@@ -35,7 +35,7 @@ export default function SubmissionDetail() {
   const id = params.id as string
 
   const [data, setData] = useState<{
-    submission: Submission; designs: Design[]; reviews: Review[]; reviewers: Reviewer[]
+    submission: Submission; designs: Design[]; reviews: Review[]; reviewers: Reviewer[]; workflowName?: string | null
   } | null>(null)
   const [annotations, setAnnotations] = useState<Annotation[]>([])
   const [loading, setLoading] = useState(true)
@@ -435,10 +435,10 @@ export default function SubmissionDetail() {
             )}
           </div>
 
-          {/* Sidebar — Review Chain */}
+          {/* Sidebar — Workflow */}
           <div className="space-y-3">
             <h2 className="text-[13px] font-bold text-p-tertiary uppercase tracking-widest mb-6 flex items-center gap-3">
-              Review Chain
+              {data.workflowName ?? 'Review Chain'}
               <span className="flex-1 h-px bg-p-border" />
             </h2>
 

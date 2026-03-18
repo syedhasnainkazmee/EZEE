@@ -50,7 +50,7 @@ export default function SubmitPage() {
   const activeUploads = useRef(0)
 
   useEffect(() => {
-    fetch('/api/admin/workflows')
+    fetch('/api/workflows')
       .then(r => r.json())
       .then(d => {
         const active = (d.workflows ?? []).filter((w: any) => w.is_active)

@@ -950,6 +950,15 @@ export async function disconnectIntegration(org_id: string, tool_id: string): Pr
     .run()
 }
 
+// ── Workflow reviewers (users assigned in workflow steps) ─────────────────
+export async function getWorkflowReviewers(workflow_id: string): Promise<(User & { step: number; focus: string })[]> {
+  const wf = await getWorkflow(workflow_id)
+  if (!wf) return []
+  return wf.steps
+    .filter(s => s.user !== null)
+    .map(s => ({ ...s.user!, step: s.step, focus: s.focus }))
+}
+
 // ── Backward-compatible aliases (used by existing API routes) ──────────────
 export const getAllReviewers    = getAllUsers
 export const getReviewerByToken = getUserByToken
