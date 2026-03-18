@@ -20,6 +20,7 @@ export const users = sqliteTable('users', {
   token:         text('token').notNull(),           // magic review-link token (legacy, kept)
   password_hash: text('password_hash'),             // null until invite accepted
   notify_email:  integer('notify_email', { mode: 'boolean' }).notNull().default(true),
+  status:        text('status').notNull().default('active').$type<'active' | 'pending'>(),
   created_at:    text('created_at').notNull(),
 })
 
@@ -170,7 +171,7 @@ export const notifications = sqliteTable('notifications', {
   id:         text('id').primaryKey(),
   user_id:    text('user_id').notNull(),
   type:       text('type').notNull()
-                .$type<'task_assigned' | 'review_needed' | 'submission_approved' | 'changes_requested' | 'invited'>(),
+                .$type<'task_assigned' | 'review_needed' | 'submission_approved' | 'changes_requested' | 'invited' | 'access_requested'>(),
   title:      text('title').notNull(),
   body:       text('body').notNull().default(''),
   href:       text('href'),

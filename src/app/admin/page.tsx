@@ -2,15 +2,16 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-type User = { id: string; name: string; email: string; role: 'admin' | 'member'; token: string; password_hash: string | null; created_at: string }
+type User = { id: string; name: string; email: string; role: 'admin' | 'member'; token: string; password_hash: string | null; status: string; created_at: string }
 type Workflow = { id: string; name: string; description: string; is_active: boolean; steps: any[]; submission_count: number }
 type Invitation = { id: string; email: string; role: string; used: boolean; expires_at: string }
 
 const AVATAR_COLORS = ['#007AFF', '#5856D6', '#34C759', '#FF9F0A', '#FF2D55']
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<'members' | 'workflows' | 'invitations'>('members')
+  const [tab, setTab] = useState<'members' | 'workflows' | 'invitations' | 'requests'>('members')
   const [users, setUsers] = useState<User[]>([])
+  const [pendingUsers, setPendingUsers] = useState<User[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loadingUsers, setLoadingUsers] = useState(true)
@@ -38,6 +39,9 @@ export default function AdminPage() {
     setLoadingUsers(true)
     fetch('/api/admin/users').then(r => r.json()).then(d => setUsers(d.users ?? [])).finally(() => setLoadingUsers(false))
   }
+  function loadPendingUsers() {
+    fetch('/api/admin/users?status=pending').then(r => r.json()).then(d => setPendingUsers(d.users ?? []))
+  }
   function loadWorkflows() {
     setLoadingWf(true)
     fetch('/api/admin/workflows').then(r => r.json()).then(d => setWorkflows(d.workflows ?? [])).finally(() => setLoadingWf(false))
@@ -46,7 +50,7 @@ export default function AdminPage() {
     fetch('/api/org').then(r => r.json()).then(d => setInvitations((d.invitations ?? []).filter((i: Invitation) => !i.used)))
   }
 
-  useEffect(() => { loadUsers(); loadWorkflows(); loadInvitations() }, [])
+  useEffect(() => { loadUsers(); loadWorkflows(); loadInvitations(); loadPendingUsers() }, [])
 
   async function addMember() {
     if (!newEmail.trim()) return
@@ -121,6 +125,17 @@ export default function AdminPage() {
     loadWorkflows()
   }
 
+  async function approveUser(id: string) {
+    await fetch(`/api/admin/users/${id}/approve`, { method: 'POST' })
+    loadPendingUsers(); loadUsers()
+  }
+
+  async function rejectUser(id: string) {
+    if (!confirm('Reject this access request? The user will be removed.')) return
+    await fetch(`/api/admin/users/${id}/reject`, { method: 'POST' })
+    loadPendingUsers()
+  }
+
   function copyLink(token: string) {
     navigator.clipboard.writeText(`${window.location.origin}/review/${token}`)
     setCopied(token); setTimeout(() => setCopied(null), 2000)
@@ -143,14 +158,19 @@ export default function AdminPage() {
 
         {/* Tab bar */}
         <div className="flex items-center gap-1 bg-p-fill rounded-2xl p-1.5 mb-8 w-fit border-2 border-p-border">
-          {(['members', 'workflows', 'invitations'] as const).map(t => (
+          {(['members', 'workflows', 'invitations', 'requests'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2.5 rounded-xl text-[13px] font-bold transition-all duration-150 capitalize flex items-center gap-2
                 ${tab === t ? 'bg-white text-p-text shadow-sm' : 'text-p-tertiary hover:text-p-secondary'}`}>
-              {t}
+              {t === 'requests' ? 'Access Requests' : t}
               {t === 'invitations' && invitations.length > 0 && (
                 <span className="bg-p-accent text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                   {invitations.length}
+                </span>
+              )}
+              {t === 'requests' && pendingUsers.length > 0 && (
+                <span className="bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {pendingUsers.length}
                 </span>
               )}
             </button>
@@ -511,6 +531,77 @@ export default function AdminPage() {
             )}
           </div>
         )}
+        {/* ── Access Requests tab ── */}
+        {tab === 'requests' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-[14px] text-p-secondary">
+                Users who requested access via your domain. Approve to activate their account, or reject to remove the request.
+              </p>
+            </div>
+
+            {pendingUsers.length === 0 ? (
+              <div className="bg-white border-2 border-dashed border-p-border rounded-[3rem] p-24 text-center flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-3xl bg-p-fill flex items-center justify-center mx-auto mb-5 shadow-sm">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-p-tertiary">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                  </svg>
+                </div>
+                <p className="text-[15px] text-p-secondary">No pending access requests.</p>
+              </div>
+            ) : (
+              <div className="bg-white border-2 border-transparent rounded-3xl overflow-hidden shadow-sm">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-p-border bg-p-bg/60">
+                      <th className="text-left text-[11px] font-bold text-p-tertiary uppercase tracking-widest px-6 py-4">Requester</th>
+                      <th className="text-left text-[11px] font-bold text-p-tertiary uppercase tracking-widest px-6 py-4">Requested</th>
+                      <th className="px-6 py-4 w-48" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingUsers.map(u => (
+                      <tr key={u.id} className="border-b border-p-border last:border-0 hover:bg-p-bg/40 transition-colors">
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
+                              style={{ background: '#5856D6' }}>
+                              {u.name[0]}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-[13px] text-p-text">{u.name}</div>
+                              <div className="text-[11px] text-p-tertiary mt-0.5">{u.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 text-[13px] text-p-tertiary">
+                          {new Date(u.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-4 justify-end">
+                            <button
+                              onClick={() => approveUser(u.id)}
+                              className="text-[13px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors px-4 py-2 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => rejectUser(u.id)}
+                              className="text-[13px] font-bold text-red-600 hover:text-red-700 transition-colors px-4 py-2 bg-red-50 hover:bg-red-100 rounded-xl border border-red-200"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
       </main>
     </div>
   )

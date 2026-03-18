@@ -21,10 +21,12 @@ const PUBLIC_PREFIXES = [
   '/login',
   '/setup',
   '/accept-invite',
+  '/request-access',
   '/review/',         // magic-link reviewer access — must stay public forever
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/accept-invite',
+  '/api/auth/request-access',
   '/api/org/setup',   // first-time org setup
   '/api/review/',     // review submission API (public for external reviewers)
   '/_next/',

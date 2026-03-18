@@ -40,11 +40,12 @@ const FEATURES = [
 // ── Login form logic ───────────────────────────────────────────────────────
 
 function LoginContent() {
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [showPass, setShowPass] = useState(false)
+  const [email, setEmail]                     = useState('')
+  const [password, setPassword]               = useState('')
+  const [error, setError]                     = useState('')
+  const [loading, setLoading]                 = useState(false)
+  const [showPass, setShowPass]               = useState(false)
+  const [showRequestAccess, setShowRequestAccess] = useState(false)
   const router       = useRouter()
   const searchParams = useSearchParams()
   const { refetch }  = useAuth()
@@ -52,6 +53,7 @@ function LoginContent() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+    setShowRequestAccess(false)
     setLoading(true)
     try {
       const res = await fetch('/api/auth/login', {
@@ -60,7 +62,11 @@ function LoginContent() {
         body: JSON.stringify({ email: email.trim(), password }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Login failed'); return }
+      if (!res.ok) {
+        setError(data.error ?? 'Login failed')
+        if (data.orgExists) setShowRequestAccess(true)
+        return
+      }
       const from = searchParams.get('from')
       const onboardingDone = localStorage.getItem('onboarding_complete')
       window.location.href = from ?? (onboardingDone ? '/' : '/onboarding')
@@ -232,6 +238,15 @@ function LoginContent() {
                 </svg>
                 {error}
               </div>
+            )}
+
+            {showRequestAccess && (
+              <Link
+                href={`/request-access?email=${encodeURIComponent(email)}`}
+                className="block w-full text-center py-3.5 rounded-2xl border-2 border-violet-200 bg-violet-50 text-violet-700 text-[13px] font-bold hover:bg-violet-100 transition-colors"
+              >
+                Request Access to this Workspace
+              </Link>
             )}
 
             <button

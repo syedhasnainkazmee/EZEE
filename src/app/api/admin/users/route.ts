@@ -1,7 +1,16 @@
-import { NextResponse } from 'next/server'
-import { getAllUsers, createUser } from '@/lib/db'
+import { NextRequest, NextResponse } from 'next/server'
+import { getAllUsers, createUser, getPendingUsers } from '@/lib/db'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const status = searchParams.get('status')
+
+  if (status === 'pending') {
+    const orgId = req.headers.get('x-org-id') ?? ''
+    const users = orgId ? await getPendingUsers(orgId) : []
+    return NextResponse.json({ users })
+  }
+
   return NextResponse.json({ users: await getAllUsers() })
 }
 

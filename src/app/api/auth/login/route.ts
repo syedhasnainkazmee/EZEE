@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserByEmail, createSession } from '@/lib/db'
+import { getUserByEmail, createSession, getOrgByDomain } from '@/lib/db'
 import { comparePassword, createSessionToken, COOKIE_NAME } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -12,7 +12,21 @@ export async function POST(request: NextRequest) {
 
     const user = await getUserByEmail(email.toLowerCase().trim())
     if (!user) {
+      const domain = email.toLowerCase().trim().split('@')[1] ?? ''
+      if (domain) {
+        const org = await getOrgByDomain(domain)
+        if (org) {
+          return NextResponse.json({
+            error: 'No account found. Your domain is registered — you can request access.',
+            orgExists: true,
+          }, { status: 401 })
+        }
+      }
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+    }
+
+    if (user.status === 'pending') {
+      return NextResponse.json({ error: 'Your access request is pending admin approval.' }, { status: 403 })
     }
 
     if (!user.password_hash) {

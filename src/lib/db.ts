@@ -30,7 +30,8 @@ export type Organization = {
 export type User = {
   id: string; org_id: string | null; name: string; email: string
   role: 'admin' | 'member'; token: string
-  password_hash: string | null; notify_email: boolean; created_at: string
+  password_hash: string | null; notify_email: boolean
+  status: string; created_at: string
 }
 
 export type UserSession = {
@@ -98,7 +99,7 @@ export type TaskAttachment = {
 
 export type Notification = {
   id: string; user_id: string
-  type: 'task_assigned' | 'review_needed' | 'submission_approved' | 'changes_requested' | 'invited'
+  type: 'task_assigned' | 'review_needed' | 'submission_approved' | 'changes_requested' | 'invited' | 'access_requested'
   title: string; body: string; href: string | null; read: boolean; created_at: string
 }
 
@@ -127,6 +128,10 @@ export async function updateOrg(id: string, updates: Partial<Pick<Organization, 
   await db.update(orgsTable).set(updates).where(eq(orgsTable.id, id)).run()
   cacheDelete(CK.org(id))
   return await getOrg(id) ?? null
+}
+
+export async function getOrgByDomain(domain: string): Promise<Organization | undefined> {
+  return await db.select().from(orgsTable).where(eq(orgsTable.domain, domain)).get() as Organization | undefined
 }
 
 // ── Users ──────────────────────────────────────────────────────────────────
@@ -161,7 +166,7 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
 
 export async function createUser(
   name: string, email: string, role: 'admin' | 'member',
-  opts?: { org_id?: string; password_hash?: string }
+  opts?: { org_id?: string; password_hash?: string; status?: string }
 ): Promise<User> {
   const slug  = name.toLowerCase().replace(/[^a-z0-9]/g, '')
   const token = `${slug}-${randomUUID().slice(0, 8)}`
@@ -170,6 +175,7 @@ export async function createUser(
     name, email, role, token,
     password_hash: opts?.password_hash ?? null,
     notify_email: true,
+    status: opts?.status ?? 'active',
     created_at: new Date().toISOString()
   }
   await db.insert(usersTable).values(user).run()
@@ -191,6 +197,27 @@ export async function deleteUser(id: string): Promise<boolean> {
   cacheClear('user:email')
   cacheDelete(CK.users())
   return result.rowsAffected > 0
+}
+
+export async function getPendingUsers(orgId: string): Promise<User[]> {
+  return await db.select().from(usersTable)
+    .where(and(eq(usersTable.org_id, orgId), eq(usersTable.status, 'pending')))
+    .orderBy(asc(usersTable.created_at))
+    .all() as User[]
+}
+
+export async function approveUser(userId: string): Promise<void> {
+  await db.update(usersTable).set({ status: 'active' }).where(eq(usersTable.id, userId)).run()
+  cacheDelete(CK.user(userId))
+  cacheClear('user:email')
+  cacheDelete(CK.users())
+}
+
+export async function rejectUser(userId: string): Promise<void> {
+  await db.delete(usersTable).where(eq(usersTable.id, userId)).run()
+  cacheDelete(CK.user(userId))
+  cacheClear('user:email')
+  cacheDelete(CK.users())
 }
 
 // ── Sessions ───────────────────────────────────────────────────────────────
