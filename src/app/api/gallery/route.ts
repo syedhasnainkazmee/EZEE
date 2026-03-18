@@ -5,9 +5,9 @@ export async function GET() {
   try {
     // Step 1: all AI submissions
     const subResult = await client.execute(
-      "SELECT id, title, tags FROM submissions WHERE submitted_by = 'ai-designer-agent'"
+      "SELECT id, title, tags, created_at FROM submissions WHERE submitted_by = 'ai-designer-agent'"
     )
-    const subs = subResult.rows as unknown as { id: string; title: string; tags: string | null }[]
+    const subs = subResult.rows as unknown as { id: string; title: string; tags: string | null; created_at: string }[]
 
     if (subs.length === 0) return NextResponse.json({ designs: [] })
 
@@ -36,8 +36,9 @@ export async function GET() {
       concept_notes:    d.concept_notes,
       liked:            Boolean(d.liked),
       submission_id:    d.submission_id,
-      submission_title: subMap[d.submission_id]?.title ?? '',
-      submission_tags:  subMap[d.submission_id]?.tags ?? null,
+      submission_title:      subMap[d.submission_id]?.title ?? '',
+      submission_tags:       subMap[d.submission_id]?.tags ?? null,
+      submission_created_at: subMap[d.submission_id]?.created_at ?? '',
     }))
 
     return NextResponse.json({ designs: rows })

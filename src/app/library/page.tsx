@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 
 type LibraryItem = {
@@ -15,15 +15,19 @@ type LibraryItem = {
   design_count: number
 }
 
+type SortKey = 'newest' | 'oldest' | 'az' | 'za'
+
 function fmtDate(s: string) {
   return new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export default function LibraryPage() {
-  const [items, setItems]       = useState<LibraryItem[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [items, setItems]         = useState<LibraryItem[]>([])
+  const [loading, setLoading]     = useState(true)
   const [activeTag, setActiveTag] = useState<string | null>(null)
-  const [search, setSearch]     = useState('')
+  const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null)
+  const [search, setSearch]       = useState('')
+  const [sort, setSort]           = useState<SortKey>('newest')
 
   useEffect(() => {
     fetch('/api/library')
@@ -32,14 +36,26 @@ export default function LibraryPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Collect all tags that exist across items
-  const allTags = Array.from(new Set(items.flatMap(i => i.tags))).sort()
+  const allTags      = useMemo(() => Array.from(new Set(items.flatMap(i => i.tags))).sort(), [items])
+  const allWorkflows = useMemo(() => Array.from(new Set(items.map(i => i.workflow_name).filter(Boolean))).sort(), [items])
 
-  const filtered = items.filter(item => {
-    const matchTag    = !activeTag || item.tags.includes(activeTag)
-    const matchSearch = !search.trim() || item.title.toLowerCase().includes(search.toLowerCase())
-    return matchTag && matchSearch
-  })
+  const filtered = useMemo(() => {
+    let list = items.filter(item => {
+      const matchTag      = !activeTag || item.tags.includes(activeTag)
+      const matchWorkflow = !activeWorkflow || item.workflow_name === activeWorkflow
+      const matchSearch   = !search.trim() || item.title.toLowerCase().includes(search.toLowerCase())
+      return matchTag && matchWorkflow && matchSearch
+    })
+
+    if (sort === 'newest') list = [...list].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    if (sort === 'oldest') list = [...list].sort((a, b) => a.created_at.localeCompare(b.created_at))
+    if (sort === 'az')     list = [...list].sort((a, b) => a.title.localeCompare(b.title))
+    if (sort === 'za')     list = [...list].sort((a, b) => b.title.localeCompare(a.title))
+
+    return list
+  }, [items, activeTag, activeWorkflow, search, sort])
+
+  const hasActiveFilter = search || activeTag || activeWorkflow
 
   return (
     <div className="flex-1 min-h-screen bg-p-bg">
@@ -49,17 +65,12 @@ export default function LibraryPage() {
           <div className="flex items-start justify-between gap-6">
             <div>
               <h1 className="font-display text-3xl font-bold text-p-text tracking-tight">Approved Library</h1>
-              <p className="text-[14px] text-p-secondary mt-1">
-                All approved design deliverables — ready to use.
-              </p>
+              <p className="text-[14px] text-p-secondary mt-1">All approved design deliverables — ready to use.</p>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0 mt-1">
               {/* Search */}
               <div className="relative">
-                <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-p-quaternary"
-                  width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}
-                >
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-p-quaternary" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
@@ -70,40 +81,91 @@ export default function LibraryPage() {
                   className="pl-9 pr-4 py-2.5 border-2 border-p-border rounded-xl text-[13px] text-p-text placeholder-p-quaternary focus:outline-none focus:border-p-accent bg-p-surface transition-colors w-52"
                 />
               </div>
+
+              {/* Sort */}
+              <select
+                value={sort}
+                onChange={e => setSort(e.target.value as SortKey)}
+                className="border-2 border-p-border rounded-xl text-[13px] text-p-secondary bg-white px-3 py-2.5 focus:outline-none focus:border-p-accent/60 transition-colors cursor-pointer"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="az">A → Z</option>
+                <option value="za">Z → A</option>
+              </select>
+
               <span className="text-[13px] text-p-tertiary font-medium">
                 {loading ? '…' : `${filtered.length} asset${filtered.length !== 1 ? 's' : ''}`}
               </span>
             </div>
           </div>
 
-          {/* Tag filter strip */}
-          {!loading && allTags.length > 0 && (
-            <div className="flex items-center gap-2 mt-5 flex-wrap">
-              <button
-                onClick={() => setActiveTag(null)}
-                className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full border-2 transition-all"
-                style={{
-                  borderColor: !activeTag ? '#D4512E' : 'transparent',
-                  background:  !activeTag ? 'rgba(212,81,46,0.08)' : 'rgba(0,0,0,0.05)',
-                  color:       !activeTag ? '#D4512E' : '#6B6560',
-                }}
-              >
-                All
-              </button>
-              {allTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => setActiveTag(tag === activeTag ? null : tag)}
-                  className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full border-2 transition-all"
-                  style={{
-                    borderColor: activeTag === tag ? '#D4512E' : 'transparent',
-                    background:  activeTag === tag ? 'rgba(212,81,46,0.08)' : 'rgba(0,0,0,0.05)',
-                    color:       activeTag === tag ? '#D4512E' : '#6B6560',
-                  }}
-                >
-                  {tag}
-                </button>
-              ))}
+          {/* Filter strips */}
+          {!loading && (
+            <div className="mt-5 space-y-2.5">
+              {/* Tag filter */}
+              {allTags.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold text-p-quaternary uppercase tracking-widest w-16 flex-shrink-0">Tags</span>
+                  <button
+                    onClick={() => setActiveTag(null)}
+                    className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full border-2 transition-all"
+                    style={{
+                      borderColor: !activeTag ? '#D4512E' : 'transparent',
+                      background:  !activeTag ? 'rgba(212,81,46,0.08)' : 'rgba(0,0,0,0.05)',
+                      color:       !activeTag ? '#D4512E' : '#6B6560',
+                    }}
+                  >
+                    All
+                  </button>
+                  {allTags.map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setActiveTag(tag === activeTag ? null : tag)}
+                      className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full border-2 transition-all"
+                      style={{
+                        borderColor: activeTag === tag ? '#D4512E' : 'transparent',
+                        background:  activeTag === tag ? 'rgba(212,81,46,0.08)' : 'rgba(0,0,0,0.05)',
+                        color:       activeTag === tag ? '#D4512E' : '#6B6560',
+                      }}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Workflow filter */}
+              {allWorkflows.length > 1 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold text-p-quaternary uppercase tracking-widest w-16 flex-shrink-0">Workflow</span>
+                  <button
+                    onClick={() => setActiveWorkflow(null)}
+                    className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full border-2 transition-all"
+                    style={{
+                      borderColor: !activeWorkflow ? '#100F0D' : 'transparent',
+                      background:  !activeWorkflow ? 'rgba(16,15,13,0.08)' : 'rgba(0,0,0,0.05)',
+                      color:       !activeWorkflow ? '#100F0D' : '#6B6560',
+                    }}
+                  >
+                    All
+                  </button>
+                  {allWorkflows.map(wf => (
+                    <button
+                      key={wf}
+                      onClick={() => setActiveWorkflow(wf === activeWorkflow ? null : wf)}
+                      className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full border-2 transition-all"
+                      style={{
+                        borderColor: activeWorkflow === wf ? '#100F0D' : 'transparent',
+                        background:  activeWorkflow === wf ? 'rgba(16,15,13,0.08)' : 'rgba(0,0,0,0.05)',
+                        color:       activeWorkflow === wf ? '#100F0D' : '#6B6560',
+                      }}
+                    >
+                      {wf}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -139,16 +201,19 @@ export default function LibraryPage() {
             <p className="text-[13px] text-p-tertiary mt-1.5 max-w-sm">
               {items.length === 0
                 ? 'Once submissions are approved, their designs will appear here for easy access.'
-                : 'Try a different tag or clear your search.'}
+                : 'Try adjusting your filters or search.'}
             </p>
-            {items.length === 0 && (
-              <Link
-                href="/submit"
-                className="mt-6 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white"
-                style={{ background: '#D4512E' }}
-              >
+            {items.length === 0 ? (
+              <Link href="/submit" className="mt-6 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white" style={{ background: '#D4512E' }}>
                 New Request
               </Link>
+            ) : hasActiveFilter && (
+              <button
+                onClick={() => { setSearch(''); setActiveTag(null); setActiveWorkflow(null) }}
+                className="mt-4 text-[12px] font-bold text-p-accent hover:text-p-accent-h transition-colors"
+              >
+                Clear filters
+              </button>
             )}
           </div>
         ) : (
@@ -170,13 +235,11 @@ export default function LibraryPage() {
                       </svg>
                     </div>
                   )}
-                  {/* Design count badge */}
                   {item.design_count > 1 && (
                     <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
                       +{item.design_count - 1} more
                     </span>
                   )}
-                  {/* Approved badge */}
                   <span className="absolute top-2 left-2 bg-emerald-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
                     Approved
                   </span>
@@ -190,7 +253,7 @@ export default function LibraryPage() {
                     </h3>
                   </Link>
 
-                  <div className="flex items-center gap-1.5 mt-1.5 text-[11.5px] text-p-tertiary">
+                  <div className="flex items-center gap-1.5 mt-1.5 text-[11.5px] text-p-tertiary flex-wrap">
                     {item.submitter_name && (
                       <>
                         <span className="font-medium">{item.submitter_name}</span>
@@ -198,6 +261,17 @@ export default function LibraryPage() {
                       </>
                     )}
                     <span>{fmtDate(item.created_at)}</span>
+                    {item.workflow_name && (
+                      <>
+                        <span>·</span>
+                        <button
+                          onClick={() => setActiveWorkflow(item.workflow_name === activeWorkflow ? null : item.workflow_name)}
+                          className="font-medium hover:text-p-accent transition-colors"
+                        >
+                          {item.workflow_name}
+                        </button>
+                      </>
+                    )}
                   </div>
 
                   {/* Tags */}
