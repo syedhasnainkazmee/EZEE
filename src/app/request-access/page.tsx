@@ -2,7 +2,7 @@
 import { useState, FormEvent, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import ProcessLogo from '@/components/ProcessLogo'
+import SunhubLogo from '@/components/SunhubLogo'
 
 function RequestAccessContent() {
   const searchParams = useSearchParams()
@@ -80,7 +80,7 @@ function RequestAccessContent() {
 
         {/* Logo */}
         <div className="flex justify-center mb-10">
-          <ProcessLogo height={28} />
+          <SunhubLogo height={28} />
         </div>
 
         {/* Heading */}

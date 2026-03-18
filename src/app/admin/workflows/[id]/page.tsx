@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import ProcessLogo from '@/components/ProcessLogo'
+import SunhubLogo from '@/components/SunhubLogo'
 
 type User = { id: string; name: string; email: string; role: string }
 type Step = { id?: string; user_id: string; focus: string }
@@ -91,7 +91,7 @@ export default function WorkflowEditorPage() {
       <header className="bg-p-nav sticky top-0 z-30">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/"><ProcessLogo height={18} /></Link>
+            <Link href="/"><SunhubLogo height={18} /></Link>
             <div className="w-px h-4 bg-white/10" />
             <nav className="flex items-center gap-1.5 text-[13px]">
               <Link href="/admin" className="text-white/40 hover:text-white/70 transition-colors">Admin</Link>

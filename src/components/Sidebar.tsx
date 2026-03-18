@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import ProcessLogo from './ProcessLogo'
+import SunhubLogo from './SunhubLogo'
 import { useAuth } from './AuthProvider'
 
 const HIDDEN_PATHS = ['/review/', '/login', '/setup', '/accept-invite', '/onboarding', '/landing']
@@ -254,7 +254,7 @@ export default function Sidebar() {
           {/* ── Logo + Bell ── */}
           <div className="h-[72px] flex items-center px-6 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             <Link href="/" className="hover:opacity-70 transition-opacity flex-1 min-w-0">
-              <ProcessLogo height={26} variant="white" />
+              <SunhubLogo height={26} color="white" />
             </Link>
             <button
               onClick={openNotifications}

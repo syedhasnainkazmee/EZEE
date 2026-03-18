@@ -1,7 +1,7 @@
 'use client'
 import { useState, FormEvent, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import ProcessLogo from '@/components/ProcessLogo'
+import SunhubLogo from '@/components/SunhubLogo'
 import { useAuth } from '@/components/AuthProvider'
 
 type InviteInfo = { email: string; role: string; org_name: string }
@@ -68,7 +68,7 @@ function AcceptInviteContent() {
     <div className="flex-1 bg-p-bg flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-10">
-          <ProcessLogo height={36} />
+          <SunhubLogo height={36} />
         </div>
 
         <div className="bg-white rounded-3xl border-2 border-transparent shadow-sm p-8">

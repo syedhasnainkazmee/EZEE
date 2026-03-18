@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import AnnotationCanvas from '@/components/AnnotationCanvas'
-import ProcessLogo from '@/components/ProcessLogo'
+import SunhubLogo from '@/components/SunhubLogo'
 import Link from 'next/link'
 
 type Design = { id: string; filename: string; original_name: string; variation_label: string }
@@ -134,7 +134,7 @@ export default function ReviewPage() {
       {/* Left Column: Fixed Studio Info Pane */}
       <div className="w-full lg:w-[380px] xl:w-[440px] bg-white border-r border-p-border p-8 lg:p-12 flex flex-col lg:h-screen lg:sticky lg:top-0 z-10 shrink-0">
         <div className="mb-12">
-          <ProcessLogo height={22} />
+          <SunhubLogo height={22} />
         </div>
         
         <div className="flex-1">

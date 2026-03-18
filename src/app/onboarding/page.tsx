@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import ProcessLogo from '@/components/ProcessLogo'
+import SunhubLogo from '@/components/SunhubLogo'
 import { useAuth } from '@/components/AuthProvider'
 
 const STEPS = ['Invite team', 'Create workflow', 'Create project', 'Done!']

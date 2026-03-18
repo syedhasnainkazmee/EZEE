@@ -2,7 +2,7 @@
 import { useState, FormEvent, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import ProcessLogo from '@/components/ProcessLogo'
+import SunhubLogo from '@/components/SunhubLogo'
 import { useAuth } from '@/components/AuthProvider'
 
 // ── Feature list for the brand panel ──────────────────────────────────────
@@ -105,7 +105,7 @@ function LoginContent() {
 
           {/* Logo */}
           <div>
-            <ProcessLogo height={30} variant="white" />
+            <SunhubLogo height={30} color="white" />
           </div>
 
           {/* Central headline */}
@@ -168,7 +168,7 @@ function LoginContent() {
 
           {/* Mobile logo */}
           <div className="flex justify-center mb-10 lg:hidden">
-            <ProcessLogo height={28} />
+            <SunhubLogo height={28} />
           </div>
 
           {/* Heading */}

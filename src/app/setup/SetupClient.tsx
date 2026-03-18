@@ -2,7 +2,7 @@
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import ProcessLogo from '@/components/ProcessLogo'
+import SunhubLogo from '@/components/SunhubLogo'
 import { useAuth } from '@/components/AuthProvider'
 
 const STEPS = [
@@ -72,7 +72,7 @@ export default function SetupClient() {
         <div className="relative z-10 flex flex-col h-full">
           {/* Logo */}
           <div>
-            <ProcessLogo height={28} variant="white" />
+            <SunhubLogo height={28} color="white" />
           </div>
 
           {/* Central copy */}
@@ -139,7 +139,7 @@ export default function SetupClient() {
 
           {/* Mobile logo */}
           <div className="flex justify-center mb-10 lg:hidden">
-            <ProcessLogo height={28} />
+            <SunhubLogo height={28} />
           </div>
 
           {/* Step indicator */}
