@@ -23,7 +23,7 @@ function modelLabel(model: string | null) {
   if (model === 'flux')       return 'Flux'
   if (model === 'sd3-medium') return 'SD3'
   if (model === 'sd3-large')  return 'SD3.5'
-  if (model === 'dalle3')     return 'DALL-E'
+  if (model === 'dalle3')     return 'GPT-Img'
   return null
 }
 

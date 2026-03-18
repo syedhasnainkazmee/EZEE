@@ -143,25 +143,25 @@ async function generateImageWithSD3(
   return Buffer.from(b64, 'base64')
 }
 
-// DALL-E 3: returns { data: [{ b64_json }] }
+// GPT Image 1: returns { data: [{ b64_json }] }
 async function generateImageWithDALLE3(prompt: string, width: number, height: number): Promise<Buffer> {
   const key = process.env.OPENAI_API_KEY
   if (!key) throw new Error('OPENAI_API_KEY not set')
 
-  // DALL-E 3 supports fixed sizes only
-  let size: '1024x1024' | '1792x1024' | '1024x1792' = '1024x1024'
-  if (width > height)  size = '1792x1024'
-  else if (height > width) size = '1024x1792'
+  // gpt-image-1 supported sizes
+  let size: '1024x1024' | '1536x1024' | '1024x1536' = '1024x1024'
+  if (width > height)  size = '1536x1024'
+  else if (height > width) size = '1024x1536'
 
   const res = await fetch(`${OPENAI_BASE}/images/generations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({ model: 'dall-e-3', prompt, size, quality: 'hd', response_format: 'b64_json', n: 1 }),
+    body: JSON.stringify({ model: 'gpt-image-1', prompt, size, quality: 'high', n: 1 }),
   })
-  if (!res.ok) throw new Error(`DALL-E 3 ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  if (!res.ok) throw new Error(`GPT Image 1 ${res.status}: ${(await res.text()).slice(0, 200)}`)
   const data = await res.json()
   const b64 = data?.data?.[0]?.b64_json
-  if (!b64) throw new Error('DALL-E 3 returned no image data')
+  if (!b64) throw new Error('GPT Image 1 returned no image data')
   return Buffer.from(b64, 'base64')
 }
 
