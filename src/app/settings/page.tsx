@@ -33,6 +33,8 @@ export default function SettingsPage() {
   const [profileMsg, setProfileMsg] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatar_url ?? null)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarSuccess, setAvatarSuccess] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
   // Password
@@ -235,6 +237,8 @@ export default function SettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setAvatarUploading(true)
+    setAvatarError('')
+    setAvatarSuccess(false)
     try {
       const fd = new FormData()
       fd.append('file', file)
@@ -242,16 +246,19 @@ export default function SettingsPage() {
       const data = await res.json()
       if (res.ok && data.avatar_url) {
         setAvatarUrl(data.avatar_url)
+        setAvatarSuccess(true)
         refetch()
+        setTimeout(() => setAvatarSuccess(false), 3000)
       } else {
-        setProfileMsg(data.error ?? 'Avatar upload failed')
-        setTimeout(() => setProfileMsg(''), 3000)
+        setAvatarError(data.error ?? 'Upload failed')
+        setTimeout(() => setAvatarError(''), 4000)
       }
     } catch {
-      setProfileMsg('Avatar upload failed')
-      setTimeout(() => setProfileMsg(''), 3000)
+      setAvatarError('Upload failed. Please try again.')
+      setTimeout(() => setAvatarError(''), 4000)
     } finally {
       setAvatarUploading(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
     }
   }
 
@@ -391,27 +398,57 @@ export default function SettingsPage() {
               <h2 className="font-bold text-[18px] text-p-text mb-6">Personal information</h2>
               <form onSubmit={saveProfile} className="space-y-5">
                 <div className="flex items-center gap-5 mb-8">
-                  <div className="relative group cursor-pointer flex-shrink-0" onClick={() => avatarInputRef.current?.click()}>
-                    <Avatar src={avatarUrl} name={user?.name ?? '?'} size={80} colorIndex={0} />
-                    <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      {avatarUploading ? (
-                        <svg className="animate-spin" width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                        </svg>
-                      ) : (
-                        <svg width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
+                  <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                    <div
+                      className="relative group cursor-pointer"
+                      onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+                    >
+                      <Avatar src={avatarUrl} name={user?.name ?? '?'} size={88} colorIndex={0} />
+                      {/* Overlay */}
+                      <div className={`absolute inset-0 rounded-2xl flex items-center justify-center transition-opacity duration-200 ${
+                        avatarUploading ? 'bg-black/50 opacity-100' : 'bg-black/40 opacity-0 group-hover:opacity-100'
+                      }`}>
+                        {avatarUploading ? (
+                          <svg className="animate-spin" width="22" height="22" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                          </svg>
+                        ) : avatarSuccess ? (
+                          <svg width="22" height="22" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                          </svg>
+                        ) : (
+                          <svg width="22" height="22" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          </svg>
+                        )}
+                      </div>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleAvatarChange}
+                      />
+                    </div>
+                    {/* Status label below avatar */}
+                    <div className="h-5 flex items-center justify-center">
+                      {avatarUploading && (
+                        <span className="text-[11px] font-semibold text-p-tertiary animate-pulse">Uploading…</span>
+                      )}
+                      {!avatarUploading && avatarSuccess && (
+                        <span className="text-[11px] font-bold text-p-success flex items-center gap-1">
+                          <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                          Photo updated!
+                        </span>
+                      )}
+                      {!avatarUploading && !avatarSuccess && (
+                        <span className="text-[11px] text-p-quaternary">Click to change</span>
                       )}
                     </div>
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="hidden"
-                      onChange={handleAvatarChange}
-                    />
+                    {avatarError && (
+                      <p className="text-[11px] font-semibold text-p-error text-center max-w-[100px] leading-snug">{avatarError}</p>
+                    )}
                   </div>
                   <div>
                     <p className="font-bold text-[16px] text-p-text">{user?.name}</p>
@@ -419,7 +456,6 @@ export default function SettingsPage() {
                     <span className="inline-block mt-2 px-3 py-1 rounded-full bg-p-fill border-2 border-p-border text-[11px] font-bold text-p-tertiary uppercase tracking-widest">
                       {user?.role}
                     </span>
-                    <p className="text-[11px] text-p-quaternary mt-2">Click photo to change</p>
                   </div>
                 </div>
 

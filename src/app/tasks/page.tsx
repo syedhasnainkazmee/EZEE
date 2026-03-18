@@ -286,16 +286,18 @@ function TaskCard({ task, users, index, onStatusChange, onRefresh, onDelete }: {
                   Edit
                 </button>
               )}
-              <Link
-                href={`/submit?task_id=${task.id}`}
-                className="inline-flex items-center gap-2 text-[13px] font-bold px-5 py-2.5 rounded-2xl transition-all text-white hover:-translate-y-0.5 active:translate-y-0"
-                style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 4px 12px -3px rgba(212,81,46,0.38)' }}
-              >
-                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
-                </svg>
-                Submit design
-              </Link>
+              {authUser?.id === task.assignee_id && (
+                <Link
+                  href={`/submit?task_id=${task.id}`}
+                  className="inline-flex items-center gap-2 text-[13px] font-bold px-5 py-2.5 rounded-2xl transition-all text-white hover:-translate-y-0.5 active:translate-y-0"
+                  style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 4px 12px -3px rgba(212,81,46,0.38)' }}
+                >
+                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                  </svg>
+                  Submit design
+                </Link>
+              )}
             </div>
           </div>
 

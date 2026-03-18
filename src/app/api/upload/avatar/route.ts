@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
-import { randomUUID } from 'crypto'
+import { put } from '@vercel/blob'
 import { updateUser } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
@@ -13,28 +11,21 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
-    const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
-    if (file.size > MAX_SIZE) return NextResponse.json({ error: 'File too large (max 5 MB)' }, { status: 413 })
+    if (file.size > 5 * 1024 * 1024)
+      return NextResponse.json({ error: 'File too large (max 5 MB)' }, { status: 413 })
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Use JPEG, PNG, WebP, or GIF.' }, { status: 400 })
-    }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type))
+      return NextResponse.json({ error: 'Use JPEG, PNG, WebP, or GIF' }, { status: 400 })
 
-    const ext = path.extname(file.name) || '.jpg'
-    const filename = `${randomUUID()}${ext}`
+    const ext = file.name.match(/\.[^.]+$/)?.[0] ?? '.jpg'
+    const blob = await put(`avatars/${userId}-${Date.now()}${ext}`, file, {
+      access: 'public',
+      contentType: file.type,
+    })
 
-    const avatarsDir = path.join(process.cwd(), 'public', 'uploads', 'avatars')
-    await mkdir(avatarsDir, { recursive: true })
-
-    const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(path.join(avatarsDir, filename), buffer)
-
-    const avatar_url = `/uploads/avatars/${filename}`
-
-    await updateUser(userId, { avatar_url })
-
-    return NextResponse.json({ avatar_url }, { status: 200 })
+    await updateUser(userId, { avatar_url: blob.url })
+    return NextResponse.json({ avatar_url: blob.url })
   } catch (err) {
     console.error('[avatar-upload]', err)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })

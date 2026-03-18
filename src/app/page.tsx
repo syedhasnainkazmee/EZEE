@@ -26,6 +26,7 @@ type Task = {
   status: string
   priority: 'low' | 'medium' | 'high'
   assignee: { name: string } | null
+  assignee_id: string | null
   assignor: { name: string } | null
   due_date: string | null
 }
@@ -136,8 +137,9 @@ function SkeletonRow() {
   )
 }
 
-function TaskRow({ task }: { task: Task }) {
+function TaskRow({ task, authUserId }: { task: Task; authUserId?: string }) {
   const isOverdue = task.due_date && new Date(task.due_date) < new Date()
+  const canSubmit = authUserId && task.assignee_id === authUserId
   return (
     <div className="group flex items-center gap-4 px-6 py-5 rounded-2xl bg-white border-2 border-transparent hover:border-p-border/60 shadow-sm hover:shadow-card transition-all duration-300 mb-3">
       {/* Priority dot */}
@@ -171,17 +173,19 @@ function TaskRow({ task }: { task: Task }) {
         </div>
       )}
 
-      {/* Submit CTA */}
-      <Link
-        href={`/submit?task_id=${task.id}`}
-        onClick={e => e.stopPropagation()}
-        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all text-p-accent bg-p-accent-soft hover:bg-p-accent hover:text-white border border-transparent hover:border-p-accent"
-      >
-        <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
-        </svg>
-        Submit
-      </Link>
+      {/* Submit CTA — only for the assigned person */}
+      {canSubmit && (
+        <Link
+          href={`/submit?task_id=${task.id}`}
+          onClick={e => e.stopPropagation()}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all text-p-accent bg-p-accent-soft hover:bg-p-accent hover:text-white border border-transparent hover:border-p-accent"
+        >
+          <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          Submit
+        </Link>
+      )}
     </div>
   )
 }
@@ -411,7 +415,7 @@ export default function Dashboard() {
                       {tasks.length}
                     </span>
                   </div>
-                  {tasks.slice(0, 5).map(t => <TaskRow key={t.id} task={t} />)}
+                  {tasks.slice(0, 5).map(t => <TaskRow key={t.id} task={t} authUserId={authUser?.id} />)}
                   {tasks.length > 5 && (
                     <Link href="/tasks" className="block text-center text-[13px] font-bold text-p-accent hover:text-p-accent-h mt-3 transition-colors py-2">
                       View all {tasks.length} tasks →
@@ -510,34 +514,98 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Team Members */}
-              {team.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <SectionHeader>Team</SectionHeader>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {team.slice(0, 6).map((member, i) => (
-                      <Link
-                        key={member.id}
-                        href={`/members/${member.id}`}
-                        className="flex flex-col gap-2 p-4 rounded-2xl bg-white border-2 border-transparent hover:border-p-border/60 shadow-sm hover:shadow-card transition-all duration-200"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Avatar src={member.avatar_url} name={member.name} size={36} colorIndex={i} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[13px] font-bold text-p-text truncate">{member.name}</div>
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-p-fill border border-p-border text-p-tertiary mt-0.5">
-                              {member.role}
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
 
+            </div>
+          </div>
+        )}
+
+        {/* ── Team Business Cards ── */}
+        {team.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-[13px] font-bold text-p-tertiary uppercase tracking-widest mb-8 flex items-center gap-3">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} className="text-p-accent flex-shrink-0">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              The Team
+              <span className="flex-1 h-px bg-p-border" />
+              <span className="text-[11px] font-bold text-p-quaternary normal-case tracking-normal">{team.length} members</span>
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-5">
+              {team.map((member, i) => {
+                const color = AVATAR_COLORS[i % AVATAR_COLORS.length]
+                return (
+                  <Link
+                    key={member.id}
+                    href={`/members/${member.id}`}
+                    className="group relative rounded-3xl overflow-hidden aspect-[3/4] shadow-sm hover:shadow-card transition-all duration-300 hover:-translate-y-1 block"
+                  >
+                    {/* Background: avatar image or gradient */}
+                    {member.avatar_url ? (
+                      <img
+                        src={member.avatar_url}
+                        alt={member.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background: `linear-gradient(135deg, ${color}22 0%, ${color}44 50%, ${color}88 100%)`,
+                          backgroundColor: `${color}15`,
+                        }}
+                      />
+                    )}
+
+                    {/* Gradient overlay — always present, stronger at bottom */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: member.avatar_url
+                          ? 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.38) 50%, rgba(0,0,0,0.08) 100%)'
+                          : `linear-gradient(to top, ${color}EE 0%, ${color}99 45%, ${color}22 100%)`,
+                      }}
+                    />
+
+                    {/* Avatar circle (shown when no photo) */}
+                    {!member.avatar_url && (
+                      <div className="absolute top-6 left-0 right-0 flex justify-center">
+                        <div
+                          className="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg border-4 border-white/20"
+                          style={{ backgroundColor: color }}
+                        >
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Content at bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 p-5">
+                      <p className="text-white font-bold text-[16px] leading-tight truncate drop-shadow-sm">
+                        {member.name}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
+                          style={{
+                            background: 'rgba(255,255,255,0.18)',
+                            color: 'rgba(255,255,255,0.9)',
+                            backdropFilter: 'blur(4px)',
+                          }}
+                        >
+                          {member.role}
+                        </span>
+                        {/* Arrow indicator */}
+                        <svg
+                          width="16" height="16" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={2}
+                          className="opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-200"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </div>
         )}
