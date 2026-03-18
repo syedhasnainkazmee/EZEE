@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/components/AuthProvider'
+import Avatar from '@/components/Avatar'
 
 type Project    = { id: string; name: string; description: string }
 type Task       = {
@@ -11,7 +12,7 @@ type Task       = {
   project_name: string; due_date: string | null; priority: 'low' | 'medium' | 'high'
   status: 'open' | 'in_progress' | 'in_review' | 'completed'; created_at: string
 }
-type User       = { id: string; name: string; role: string }
+type User       = { id: string; name: string; role: string; avatar_url?: string | null }
 type Subtask    = { id: string; task_id: string; title: string; completed: boolean }
 type Attachment = { id: string; task_id: string; filename: string; original_name: string; mime_type: string; size: number }
 
@@ -224,12 +225,12 @@ function TaskCard({ task, users, index, onStatusChange, onRefresh, onDelete }: {
             )}
             {task.assignee && (
               <div className="flex items-center gap-2 bg-p-fill border-2 border-p-border px-3 py-2 rounded-2xl">
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-                  style={{ background: AVATAR_COLORS[index % AVATAR_COLORS.length] }}
-                >
-                  {task.assignee.name.charAt(0)}
-                </div>
+                <Avatar
+                  src={users.find(u => u.id === task.assignee_id)?.avatar_url}
+                  name={task.assignee.name}
+                  size={24}
+                  colorIndex={index}
+                />
                 <span className="text-[12px] font-semibold text-p-secondary">{task.assignee.name}</span>
               </div>
             )}

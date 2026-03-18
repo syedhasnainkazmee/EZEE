@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import SunhubLogo from './SunhubLogo'
 import { useAuth } from './AuthProvider'
+import Avatar from './Avatar'
 
 const HIDDEN_PATHS = ['/review/', '/login', '/setup', '/accept-invite', '/onboarding', '/landing']
 
@@ -358,12 +359,7 @@ export default function Sidebar() {
 
             {/* User profile row */}
             <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl">
-              <div
-                className="w-9 h-9 rounded-2xl flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0"
-                style={{ background: user?.name ? avatarGradient(user.name) : '#D4512E' }}
-              >
-                {initials}
-              </div>
+              <Avatar src={user?.avatar_url} name={user?.name ?? '?'} size={36} colorIndex={0} />
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-semibold truncate" style={{ color: 'rgba(255,255,255,0.88)' }}>
                   {user?.name ?? '…'}

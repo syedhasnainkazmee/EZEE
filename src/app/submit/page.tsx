@@ -1,7 +1,7 @@
 'use client'
 import { upload } from '@vercel/blob/client'
-import { useState, useRef, DragEvent, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useRef, DragEvent, useEffect, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AgentGenerationScreen from '@/components/AgentGenerationScreen'
 
@@ -16,7 +16,7 @@ type FilePreview = {
 }
 
 type WorkflowOption = { id: string; name: string; description: string }
-type TaskOption    = { id: string; title: string; project_name: string }
+type TaskOption    = { id: string; title: string; description: string; project_name: string }
 
 const LABELS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','P']
 const MAX_CONCURRENT = 3
@@ -28,7 +28,16 @@ const TAG_OPTIONS = [
 ]
 
 export default function SubmitPage() {
+  return (
+    <Suspense>
+      <SubmitPageInner />
+    </Suspense>
+  )
+}
+
+function SubmitPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [title, setTitle]             = useState('')
   const [description, setDescription] = useState('')
   const [workflowId, setWorkflowId]   = useState('')
@@ -50,6 +59,8 @@ export default function SubmitPage() {
   const activeUploads = useRef(0)
 
   useEffect(() => {
+    const urlTaskId = searchParams.get('task_id')
+
     fetch('/api/workflows')
       .then(r => r.json())
       .then(d => {
@@ -64,8 +75,26 @@ export default function SubmitPage() {
       .then(d => {
         const openTasks = (d.tasks ?? []).filter((t: any) => t.status !== 'completed' && t.status !== 'in_review')
         setTasks(openTasks)
+        if (urlTaskId) {
+          setTaskId(urlTaskId)
+          const task = openTasks.find((t: any) => t.id === urlTaskId)
+          if (task) prefillFromTask(task, urlTaskId)
+        }
       })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function prefillFromTask(task: TaskOption, id: string) {
+    setTitle(task.title)
+    // Fetch subtasks
+    const sr = await fetch(`/api/tasks/${id}/subtasks`).then(r => r.json())
+    const subtaskTitles: string[] = (sr.subtasks ?? []).map((s: any) => s.title)
+    let desc = task.description?.trim() ?? ''
+    if (subtaskTitles.length > 0) {
+      const list = subtaskTitles.map(t => `• ${t}`).join('\n')
+      desc = desc ? `${desc}\n\nSubtasks:\n${list}` : `Subtasks:\n${list}`
+    }
+    setDescription(desc)
+  }
 
   const startUpload = useCallback(async (fp: FilePreview) => {
     while (activeUploads.current >= MAX_CONCURRENT) {
@@ -271,7 +300,14 @@ export default function SubmitPage() {
               </label>
               <select
                 value={taskId || ''}
-                onChange={e => setTaskId(e.target.value || null)}
+                onChange={e => {
+                  const id = e.target.value || null
+                  setTaskId(id)
+                  if (id) {
+                    const task = tasks.find(t => t.id === id)
+                    if (task) prefillFromTask(task, id)
+                  }
+                }}
                 className="w-full border-2 border-p-border rounded-xl px-3 py-2.5 text-[13px] font-medium text-p-text focus:outline-none focus:border-p-accent bg-p-surface transition-all appearance-none cursor-pointer"
               >
                 <option value="">No task</option>

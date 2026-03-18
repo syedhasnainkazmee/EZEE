@@ -258,6 +258,14 @@ export default function Dashboard() {
     }).catch(() => {})
   }, [authUser?.role])
 
+  // Keep current user's avatar in team list in sync with authUser
+  useEffect(() => {
+    if (!authUser) return
+    setTeam(prev => prev.map(m =>
+      m.id === authUser.id ? { ...m, avatar_url: authUser.avatar_url } : m
+    ))
+  }, [authUser?.id, authUser?.avatar_url])
+
   const workflowOptions = useMemo(() => {
     const map = new Map<string, string>()
     submissions.forEach(s => { if (s.workflow_id) map.set(s.workflow_id, s.workflow_name) })
