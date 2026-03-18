@@ -7,7 +7,7 @@ export async function GET() {
     const subResult = await client.execute(
       "SELECT id, title, tags FROM submissions WHERE submitted_by = 'ai-designer-agent'"
     )
-    const subs = subResult.rows as { id: string; title: string; tags: string | null }[]
+    const subs = subResult.rows as unknown as { id: string; title: string; tags: string | null }[]
 
     if (subs.length === 0) return NextResponse.json({ designs: [] })
 
@@ -18,7 +18,7 @@ export async function GET() {
       sql: `SELECT id, submission_id, filename, original_name, variation_label, model, copy, concept_notes, liked FROM designs WHERE submission_id IN (${placeholders})`,
       args: ids,
     })
-    const designs = designResult.rows as {
+    const designs = designResult.rows as unknown as {
       id: string; submission_id: string; filename: string; original_name: string
       variation_label: string; model: string | null; copy: string | null
       concept_notes: string | null; liked: number
