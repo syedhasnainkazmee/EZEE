@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserByEmail, createSession, getOrgByDomain } from '@/lib/db'
+import { getUserByEmail, createSession, getOrgByDomain, getAllUsers } from '@/lib/db'
 import { comparePassword, createSessionToken, COOKIE_NAME } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -16,9 +16,12 @@ export async function POST(request: NextRequest) {
       if (domain) {
         const org = await getOrgByDomain(domain)
         if (org) {
+          const allUsers = await getAllUsers()
+          const admin = allUsers.find(u => u.org_id === org.id && u.role === 'admin')
           return NextResponse.json({
-            error: 'No account found. Your domain is registered — you can request access.',
             orgExists: true,
+            orgName: org.name,
+            adminName: admin?.name ?? null,
           }, { status: 401 })
         }
       }

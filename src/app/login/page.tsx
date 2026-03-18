@@ -45,7 +45,7 @@ function LoginContent() {
   const [error, setError]                     = useState('')
   const [loading, setLoading]                 = useState(false)
   const [showPass, setShowPass]               = useState(false)
-  const [showRequestAccess, setShowRequestAccess] = useState(false)
+  const [orgInfo, setOrgInfo]                 = useState<{ name: string; adminName: string | null } | null>(null)
   const router       = useRouter()
   const searchParams = useSearchParams()
   const { refetch }  = useAuth()
@@ -53,7 +53,7 @@ function LoginContent() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    setShowRequestAccess(false)
+    setOrgInfo(null)
     setLoading(true)
     try {
       const res = await fetch('/api/auth/login', {
@@ -63,8 +63,11 @@ function LoginContent() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? 'Login failed')
-        if (data.orgExists) setShowRequestAccess(true)
+        if (data.orgExists) {
+          setOrgInfo({ name: data.orgName ?? 'this workspace', adminName: data.adminName ?? null })
+        } else {
+          setError(data.error ?? 'Login failed')
+        }
         return
       }
       const from = searchParams.get('from')
@@ -240,13 +243,23 @@ function LoginContent() {
               </div>
             )}
 
-            {showRequestAccess && (
-              <Link
-                href={`/request-access?email=${encodeURIComponent(email)}`}
-                className="block w-full text-center py-3.5 rounded-2xl border-2 border-violet-200 bg-violet-50 text-violet-700 text-[13px] font-bold hover:bg-violet-100 transition-colors"
-              >
-                Request Access to this Workspace
-              </Link>
+            {orgInfo && (
+              <div className="rounded-2xl border-2 border-violet-200 bg-violet-50 px-5 py-4 animate-fade-in">
+                <p className="text-[13px] text-violet-800 font-semibold mb-0.5">
+                  {orgInfo.name} workspace exists
+                </p>
+                <p className="text-[12px] text-violet-600 mb-3">
+                  {orgInfo.adminName
+                    ? `Request access from admin ${orgInfo.adminName} to join.`
+                    : 'You can request access to join this workspace.'}
+                </p>
+                <Link
+                  href={`/request-access?email=${encodeURIComponent(email)}`}
+                  className="block w-full text-center py-2.5 rounded-xl bg-violet-600 text-white text-[13px] font-bold hover:bg-violet-700 transition-colors"
+                >
+                  Request Access
+                </Link>
+              </div>
             )}
 
             <button
