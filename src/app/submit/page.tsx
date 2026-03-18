@@ -3,6 +3,7 @@ import { upload } from '@vercel/blob/client'
 import { useState, useRef, DragEvent, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import AgentGenerationScreen from '@/components/AgentGenerationScreen'
 
 type UploadStatus = 'uploading' | 'done' | 'error'
 type FilePreview = {
@@ -48,6 +49,8 @@ export default function SubmitPage() {
   const [agentSubId, setAgentSubId]     = useState<string | null>(null)
   const [agentError, setAgentError]     = useState('')
   const [showAgentModal, setShowAgentModal] = useState(false)
+  const [showAgentScreen, setShowAgentScreen] = useState(false)
+  const [agentPayload, setAgentPayload] = useState<any>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const activeUploads = useRef(0)
 
@@ -129,52 +132,19 @@ export default function SubmitPage() {
     addFiles(Array.from(e.dataTransfer.files))
   }
 
-  async function handleActivateAgent() {
+  function handleActivateAgent() {
     if (!title.trim()) { setError('Please give this submission a title first.'); return }
     if (!workflowId)   { setError('Please select an approval workflow first.'); return }
 
     setError('')
-    setAgentError('')
-    setAgentSubId(null)
-    setShowAgentModal(true)
-    setAgentStep('prompting')
-
-    const payload = {
+    setAgentPayload({
       title:       title.trim(),
       description: description.trim(),
       tags,
       task_id:     taskId,
       workflow_id: workflowId,
-    }
-
-    try {
-      // ── Call 1: Kimi generates 10 creative concepts (~15-20s) ──────────────
-      const r1 = await fetch('/api/agent/designer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, step: 'concepts' }),
-      })
-      const d1 = await r1.json()
-      if (!r1.ok || d1.error) { setAgentStep('error'); setAgentError(d1.error ?? 'Kimi failed'); return }
-
-      // ── Call 2: Flux renders 10 images (~20-30s) ───────────────────────────
-      setAgentStep('generating')
-      const r2 = await fetch('/api/agent/designer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, step: 'render', concepts: d1.concepts }),
-      })
-
-      setAgentStep('uploading')
-      const d2 = await r2.json()
-      if (!r2.ok || d2.error) { setAgentStep('error'); setAgentError(d2.error ?? 'Render failed'); return }
-
-      setAgentSubId(d2.submissionId)
-      setAgentStep('done')
-    } catch (e: any) {
-      setAgentStep('error')
-      setAgentError(e.message ?? 'Network error')
-    }
+    })
+    setShowAgentScreen(true)
   }
 
   async function handleSubmit() {
@@ -256,6 +226,14 @@ export default function SubmitPage() {
   return (
     // Full viewport — no page scroll
     <div className="flex h-screen overflow-hidden bg-p-bg">
+
+      {showAgentScreen && agentPayload && (
+        <AgentGenerationScreen
+          payload={agentPayload}
+          onDone={(id) => { router.push('/submission/' + id) }}
+          onCancel={() => setShowAgentScreen(false)}
+        />
+      )}
 
       {/* ── Left pane: Form ── */}
       <div className="w-[380px] flex-shrink-0 flex flex-col h-full bg-white border-r border-p-border">
@@ -426,7 +404,7 @@ export default function SubmitPage() {
           {/* AI Designer Agent button */}
           <button
             onClick={handleActivateAgent}
-            disabled={submitting || loadingWf || workflows.length === 0 || agentStep === 'generating' || agentStep === 'uploading' || agentStep === 'prompting'}
+            disabled={submitting || loadingWf || workflows.length === 0}
             className="w-full border-2 border-dashed border-p-border hover:border-p-accent/50 disabled:opacity-40 text-p-tertiary hover:text-p-accent font-semibold py-3 rounded-xl transition-all duration-200 text-[13px] flex items-center justify-center gap-2 group"
           >
             <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} className="group-hover:rotate-12 transition-transform">
@@ -462,131 +440,6 @@ export default function SubmitPage() {
         </div>
       </div>
 
-      {/* ── Designer Agent Modal ── */}
-      {showAgentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-modal w-[420px] p-8 relative animate-scale-in">
-
-            {/* Close (only when done or error) */}
-            {(agentStep === 'done' || agentStep === 'error') && (
-              <button
-                onClick={() => setShowAgentModal(false)}
-                className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full hover:bg-p-fill text-p-tertiary transition-colors"
-              >
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
-            )}
-
-            {/* Icon */}
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 transition-all ${
-              agentStep === 'done'  ? 'bg-emerald-50' :
-              agentStep === 'error' ? 'bg-red-50' :
-              'bg-p-accent/10'
-            }`}>
-              {agentStep === 'done' ? (
-                <svg width="22" height="22" fill="none" stroke="#0EA572" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-              ) : agentStep === 'error' ? (
-                <svg width="22" height="22" fill="none" stroke="#DC3545" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                </svg>
-              ) : (
-                <svg width="22" height="22" fill="none" stroke="#D4512E" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                </svg>
-              )}
-            </div>
-
-            {/* Heading */}
-            <h2 className="font-display text-[20px] font-bold text-p-text mb-1.5 leading-tight">
-              {agentStep === 'prompting'  && 'Kimi developing ad concepts…'}
-              {agentStep === 'generating' && 'Flux rendering 10 images…'}
-              {agentStep === 'uploading'  && 'Saving designs…'}
-              {agentStep === 'done'       && 'Agent designs ready!'}
-              {agentStep === 'error'      && 'Agent failed'}
-            </h2>
-
-            {/* Body */}
-            <p className="text-[13px] text-p-tertiary leading-relaxed mb-6">
-              {agentStep === 'prompting'  && 'Kimi K2 is reading the brief, audience personas, brand context, and your past liked designs — then writing 10 distinct creative concepts with Flux prompts.'}
-              {agentStep === 'generating' && 'Kimi finished. Flux is now rendering all 10 image variations in parallel — usually takes 20–35 seconds.'}
-              {agentStep === 'uploading'  && 'All images generated. Saving to your submission…'}
-              {agentStep === 'done'       && '10 AI-generated design variations are ready. Like the ones that resonate — the agent learns from your picks.'}
-              {agentStep === 'error'      && agentError}
-            </p>
-
-            {/* Progress steps */}
-            {agentStep !== 'done' && agentStep !== 'error' && (
-              <div className="space-y-2 mb-6">
-                {[
-                  { key: 'prompting',  label: 'Kimi K2 — reading brief + writing creative concepts' },
-                  { key: 'generating', label: 'Flux — rendering 10 image variations' },
-                  { key: 'uploading',  label: 'Saving images + creating submission' },
-                ].map(step => {
-                  const steps = ['prompting', 'generating', 'uploading']
-                  const currentIdx = steps.indexOf(agentStep)
-                  const stepIdx    = steps.indexOf(step.key)
-                  const done = stepIdx < currentIdx
-                  const active = stepIdx === currentIdx
-                  return (
-                    <div key={step.key} className="flex items-center gap-3 text-[12.5px]">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-                        done   ? 'bg-emerald-500' :
-                        active ? 'bg-p-accent' :
-                        'bg-p-fill border border-p-border'
-                      }`}>
-                        {done ? (
-                          <svg width="9" height="9" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-                          </svg>
-                        ) : active ? (
-                          <svg className="animate-spin" width="10" height="10" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4"/>
-                            <path className="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                          </svg>
-                        ) : null}
-                      </div>
-                      <span className={active ? 'text-p-text font-medium' : done ? 'text-emerald-600 font-medium' : 'text-p-quaternary'}>
-                        {step.label}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Actions */}
-            {agentStep === 'done' && agentSubId && (
-              <div className="flex gap-3">
-                <Link
-                  href={`/submission/${agentSubId}`}
-                  className="flex-1 bg-p-accent hover:bg-p-accent-h text-white font-semibold py-3 rounded-xl text-[13px] text-center transition-all shadow-accent"
-                >
-                  View AI Designs →
-                </Link>
-                <button
-                  onClick={() => setShowAgentModal(false)}
-                  className="px-4 py-3 border-2 border-p-border rounded-xl text-[13px] font-medium text-p-text hover:border-p-text transition-colors"
-                >
-                  Continue submitting
-                </button>
-              </div>
-            )}
-
-            {agentStep === 'error' && (
-              <button
-                onClick={() => setShowAgentModal(false)}
-                className="w-full border-2 border-p-border rounded-xl py-3 text-[13px] font-medium text-p-text hover:border-p-text transition-colors"
-              >
-                Close
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ── Right pane: Dropzone / Gallery ── */}
       <div className="flex-1 h-full overflow-hidden relative bg-[#FDFDFC]">

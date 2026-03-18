@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import AnnotationCanvas from '@/components/AnnotationCanvas'
 import { useAuth } from '@/components/AuthProvider'
+import AgentGenerationScreen from '@/components/AgentGenerationScreen'
 
 type Design = { id: string; filename: string; original_name: string; variation_label: string; order_index: number; version: number; liked?: boolean; model?: string | null; concept_notes?: string | null; copy?: string | null }
 type Reviewer = { id: string; name: string; role: string; focus: string; step: number; token: string }
@@ -43,7 +44,8 @@ export default function SubmissionDetail() {
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [resubmitting, setResubmitting] = useState(false)
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
-  const [regenStep, setRegenStep] = useState<'idle' | 'prompting' | 'generating' | 'uploading' | 'done' | 'error'>('idle')
+  const [showRegenScreen, setShowRegenScreen] = useState(false)
+  const [regenPayload, setRegenPayload] = useState<any>(null)
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
@@ -143,36 +145,14 @@ export default function SubmissionDetail() {
     setResubmitting(false)
   }
 
-  async function regenerate() {
+  function regenerate() {
     if (!data) return
     const { submission: sub } = data
     if (!sub.workflow_id) return
-    setRegenStep('prompting')
     const tags = sub.tags ? (() => { try { return JSON.parse(sub.tags!) } catch { return [] } })() : []
     const cleanTitle = sub.title.replace(/^\[AI\]\s*/i, '')
-    const payload = { title: cleanTitle, description: sub.description, tags, task_id: sub.task_id, workflow_id: sub.workflow_id }
-    try {
-      const r1 = await fetch('/api/agent/designer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, step: 'concepts' }),
-      })
-      const d1 = await r1.json()
-      if (!r1.ok || d1.error) { setRegenStep('error'); return }
-      setRegenStep('generating')
-      const r2 = await fetch('/api/agent/designer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, step: 'render', concepts: d1.concepts }),
-      })
-      setRegenStep('uploading')
-      const d2 = await r2.json()
-      if (!r2.ok || d2.error) { setRegenStep('error'); return }
-      setRegenStep('done')
-      window.location.href = `/submission/${d2.submissionId}`
-    } catch {
-      setRegenStep('error')
-    }
+    setRegenPayload({ title: cleanTitle, description: sub.description, tags, task_id: sub.task_id, workflow_id: sub.workflow_id })
+    setShowRegenScreen(true)
   }
 
   if (loading) return (
@@ -215,67 +195,12 @@ export default function SubmissionDetail() {
 
   return (
     <div className="flex-1 bg-p-bg">
-      {/* Regeneration progress modal */}
-      {regenStep !== 'idle' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-modal p-8 w-[360px] flex flex-col items-center gap-6">
-            <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="text-violet-600">
-                <path d="M12 2a1 1 0 01.894.553l2.184 4.424 4.882.71a1 1 0 01.554 1.706l-3.532 3.442.834 4.862a1 1 0 01-1.451 1.054L12 16.347l-4.365 2.404a1 1 0 01-1.451-1.054l.834-4.862L3.486 9.393a1 1 0 01.554-1.706l4.882-.71L11.106 2.553A1 1 0 0112 2z"/>
-              </svg>
-            </div>
-            <div className="text-center">
-              <p className="font-bold text-[15px] text-p-text mb-1">
-                {regenStep === 'error' ? 'Generation Failed' : regenStep === 'done' ? 'Done!' : 'Generating New Concepts'}
-              </p>
-              <p className="text-[12px] text-p-tertiary">
-                {regenStep === 'error' ? 'Something went wrong. Please try again.' : regenStep === 'done' ? 'Redirecting to your new designs…' : 'This takes about 60 seconds'}
-              </p>
-            </div>
-            <div className="w-full space-y-2.5">
-              {[
-                { key: 'prompting',   label: 'Developing concepts with Kimi K2' },
-                { key: 'generating',  label: 'Rendering images across models' },
-                { key: 'uploading',   label: 'Saving designs' },
-              ].map(({ key, label }) => {
-                const steps = ['prompting', 'generating', 'uploading', 'done']
-                const stepIdx = steps.indexOf(key)
-                const curIdx  = steps.indexOf(regenStep === 'error' ? 'prompting' : regenStep)
-                const done    = regenStep !== 'error' && curIdx > stepIdx
-                const active  = regenStep !== 'error' && curIdx === stepIdx
-                return (
-                  <div key={key} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-medium transition-all ${
-                    done   ? 'bg-emerald-50 text-emerald-700' :
-                    active ? 'bg-violet-50 text-violet-700'   :
-                             'bg-p-fill text-p-quaternary'
-                  }`}>
-                    <span className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
-                      {done ? (
-                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>
-                      ) : active ? (
-                        <svg className="animate-spin" width="14" height="14" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-p-border" />
-                      )}
-                    </span>
-                    {label}
-                  </div>
-                )
-              })}
-            </div>
-            {regenStep === 'error' && (
-              <button
-                onClick={() => setRegenStep('idle')}
-                className="text-[13px] font-bold text-p-secondary hover:text-p-text transition-colors"
-              >
-                Dismiss
-              </button>
-            )}
-          </div>
-        </div>
+      {showRegenScreen && regenPayload && (
+        <AgentGenerationScreen
+          payload={regenPayload}
+          onDone={(newId) => { setShowRegenScreen(false); window.location.href = '/submission/' + newId }}
+          onCancel={() => setShowRegenScreen(false)}
+        />
       )}
 
       {canvas !== null && canvasDesign && (
@@ -334,8 +259,7 @@ export default function SubmissionDetail() {
             {canSend && isAgentSubmission && (
               <button
                 onClick={regenerate}
-                disabled={regenStep !== 'idle'}
-                className="inline-flex items-center gap-2 disabled:opacity-50 text-[13px] font-bold px-5 py-3 rounded-2xl transition-all hover:-translate-y-0.5 active:translate-y-0 border-2 border-p-border bg-white text-p-text hover:border-violet-300 hover:text-violet-700 hover:bg-violet-50"
+                className="inline-flex items-center gap-2 text-[13px] font-bold px-5 py-3 rounded-2xl transition-all hover:-translate-y-0.5 active:translate-y-0 border-2 border-p-border bg-white text-p-text hover:border-violet-300 hover:text-violet-700 hover:bg-violet-50"
               >
                 <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
