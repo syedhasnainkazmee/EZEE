@@ -422,13 +422,12 @@ export default function SubmissionDetail() {
                         <span className="text-[12px] text-p-tertiary truncate flex-1">{design.original_name}</span>
                         {isAgentSubmission && design.model && (
                           <span className={`flex-shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md ${
-                            design.model === 'flux'
-                              ? 'bg-blue-50 text-blue-600'
-                              : design.model === 'sd3-medium'
-                              ? 'bg-purple-50 text-purple-600'
-                              : 'bg-orange-50 text-orange-600'
+                            design.model === 'flux'       ? 'bg-blue-50 text-blue-600'
+                            : design.model === 'sd3-medium' ? 'bg-purple-50 text-purple-600'
+                            : design.model === 'dalle3'     ? 'bg-emerald-50 text-emerald-600'
+                            :                                 'bg-orange-50 text-orange-600'
                           }`}>
-                            {design.model === 'flux' ? 'Flux' : design.model === 'sd3-medium' ? 'SD3' : 'SD3.5'}
+                            {design.model === 'flux' ? 'Flux' : design.model === 'sd3-medium' ? 'SD3' : design.model === 'dalle3' ? 'DALL-E' : 'SD3.5'}
                           </span>
                         )}
                         {isAgentSubmission && (
