@@ -35,17 +35,29 @@ const MODEL_COLOR: Record<string, { ring: string; badge: string; dot: string }> 
   'dalle3':     { ring: 'ring-emerald-300',badge: 'bg-emerald-500/90 text-white',dot: 'bg-emerald-400'},
 }
 
+// Mirror DISABLED_MODELS from the API routes — keep in sync
+const DISABLED_MODELS: Record<string, boolean> = {
+  dalle3: true,
+}
+
 const MODELS = [
   { key: 'flux',       label: 'Flux 2 Klein',  short: 'Flux'  },
   { key: 'sd3-medium', label: 'SD3 Medium',    short: 'SD3'   },
-  { key: 'dalle3',     label: 'GPT Image 1.5', short: 'GPT'   },
   { key: 'sd3-large',  label: 'SD3.5 Large',   short: 'SD3.5' },
+  // { key: 'dalle3', label: 'GPT Image 1.5', short: 'GPT' }, // disabled — no budget set
 ]
+
+function resolveModel(i: number): string {
+  const mod = i % 4
+  if (mod === 0) return 'flux'
+  if (mod === 1) return 'sd3-medium'
+  if (mod === 2) return DISABLED_MODELS['dalle3'] ? 'flux' : 'dalle3'
+  return 'sd3-large'
+}
 
 function makeDefaultSlots(): ImageSlot[] {
   return Array.from({ length: 10 }, (_, i) => {
-    const mod = i % 4
-    const model = mod === 0 ? 'flux' : mod === 1 ? 'sd3-medium' : mod === 2 ? 'dalle3' : 'sd3-large'
+    const model = resolveModel(i)
     const disp  = MODELS.find(m => m.key === model)?.label ?? model
     const label = 'ABCDEFGHIJ'[i]
     return { state: 'pending', model, modelDisplay: disp, label }

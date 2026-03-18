@@ -20,12 +20,17 @@ const SD3_MEDIUM_BASE = 'https://ai.api.nvidia.com/v1/genai/stabilityai/stable-d
 const SD3_LARGE_BASE  = 'https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3_5-large'
 const OPENAI_BASE     = 'https://api.openai.com/v1'
 
-// Distribution across 10 images: 0,4,8→Flux | 1,5,9→SD3 Medium | 2,6→DALL-E 3 | 3,7→SD3.5 Large
+// Toggle paid/external models here (wire to DB settings later for per-org control)
+const DISABLED_MODELS: Record<string, boolean> = {
+  dalle3: true,  // OpenAI DALL-E — disabled until budget is configured
+}
+
+// Distribution: 0,4,8→Flux | 1,5,9→SD3 Medium | 2,6→DALL-E 3 (or fallback to flux) | 3,7→SD3.5 Large
 const MODEL_FOR_INDEX = (i: number) => {
   const mod = i % 4
   if (mod === 0) return 'flux'
   if (mod === 1) return 'sd3-medium'
-  if (mod === 2) return 'dalle3'
+  if (mod === 2) return DISABLED_MODELS['dalle3'] ? 'flux' : 'dalle3'
   return 'sd3-large'
 }
 
