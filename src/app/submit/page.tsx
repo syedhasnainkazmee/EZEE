@@ -44,11 +44,6 @@ export default function SubmitPage() {
   const [error, setError]             = useState('')
 
   // ── Designer Agent state ──────────────────────────────────────────────────
-  type AgentStep = 'idle' | 'prompting' | 'generating' | 'uploading' | 'done' | 'error'
-  const [agentStep, setAgentStep]       = useState<AgentStep>('idle')
-  const [agentSubId, setAgentSubId]     = useState<string | null>(null)
-  const [agentError, setAgentError]     = useState('')
-  const [showAgentModal, setShowAgentModal] = useState(false)
   const [showAgentScreen, setShowAgentScreen] = useState(false)
   const [agentPayload, setAgentPayload] = useState<any>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -227,13 +222,6 @@ export default function SubmitPage() {
     // Full viewport — no page scroll
     <div className="flex h-screen overflow-hidden bg-p-bg">
 
-      {showAgentScreen && agentPayload && (
-        <AgentGenerationScreen
-          payload={agentPayload}
-          onDone={(id) => { router.push('/submission/' + id) }}
-          onCancel={() => setShowAgentScreen(false)}
-        />
-      )}
 
       {/* ── Left pane: Form ── */}
       <div className="w-[380px] flex-shrink-0 flex flex-col h-full bg-white border-r border-p-border">
@@ -441,8 +429,20 @@ export default function SubmitPage() {
       </div>
 
 
-      {/* ── Right pane: Dropzone / Gallery ── */}
+      {/* ── Right pane: Dropzone / Gallery / Agent ── */}
       <div className="flex-1 h-full overflow-hidden relative bg-[#FDFDFC]">
+
+        {/* Agent generation view — replaces dropzone while running */}
+        {showAgentScreen && agentPayload && (
+          <div className="absolute inset-0 z-20">
+            <AgentGenerationScreen
+              payload={agentPayload}
+              onDone={(id) => { setShowAgentScreen(false); router.push(`/submission/${id}`) }}
+              onError={() => setShowAgentScreen(false)}
+            />
+          </div>
+        )}
+
         <input
           ref={inputRef}
           type="file"

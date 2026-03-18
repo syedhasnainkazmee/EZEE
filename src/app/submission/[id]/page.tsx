@@ -195,14 +195,6 @@ export default function SubmissionDetail() {
 
   return (
     <div className="flex-1 bg-p-bg">
-      {showRegenScreen && regenPayload && (
-        <AgentGenerationScreen
-          payload={regenPayload}
-          onDone={(newId) => { setShowRegenScreen(false); window.location.href = '/submission/' + newId }}
-          onCancel={() => setShowRegenScreen(false)}
-        />
-      )}
-
       {canvas !== null && canvasDesign && (
         <AnnotationCanvas
           src={canvasDesign.filename}
@@ -287,8 +279,20 @@ export default function SubmissionDetail() {
       <main className="max-w-6xl mx-auto px-8 py-10">
         <div className="grid grid-cols-3 gap-8">
 
-          {/* Designs */}
+          {/* Designs / Regen screen */}
           <div className="col-span-2 space-y-4">
+            {/* Inline generation screen */}
+            {showRegenScreen && regenPayload && (
+              <div className="rounded-3xl overflow-hidden border-2 border-p-border shadow-card" style={{ minHeight: 520 }}>
+                <AgentGenerationScreen
+                  payload={regenPayload}
+                  onDone={(newId) => { setShowRegenScreen(false); window.location.href = `/submission/${newId}` }}
+                  onError={() => setShowRegenScreen(false)}
+
+                />
+              </div>
+            )}
+
             {submission.description && (
               <div className="bg-white border-2 border-transparent rounded-2xl px-6 py-5 text-[13px] text-p-secondary leading-relaxed shadow-sm">
                 <span className="font-bold text-p-text">Notes — </span>{submission.description}

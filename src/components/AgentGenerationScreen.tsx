@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react'
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────────
 
-interface AgentPayload {
+export interface AgentPayload {
   title: string
   description?: string
   tags?: string[]
@@ -18,445 +18,302 @@ interface ImageSlot {
   modelDisplay: string
   label:        string
   url?:         string
-  copy?:        { headline: string; body: string }
-  concept_notes?: string
 }
 
 interface Props {
   payload:  AgentPayload
   onDone:   (submissionId: string) => void
-  onCancel: () => void
+  onError:  () => void
 }
 
-// ── Model badge colours ────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
 
-const MODEL_BADGE: Record<string, string> = {
-  'flux':       'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-  'sd3-medium': 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
-  'sd3-large':  'bg-violet-500/20 text-violet-400 border border-violet-500/30',
-  'dalle3':     'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+const MODEL_COLOR: Record<string, { ring: string; badge: string; dot: string }> = {
+  'flux':       { ring: 'ring-blue-300',   badge: 'bg-blue-500/90 text-white',   dot: 'bg-blue-400'   },
+  'sd3-medium': { ring: 'ring-purple-300', badge: 'bg-purple-500/90 text-white', dot: 'bg-purple-400' },
+  'sd3-large':  { ring: 'ring-violet-300', badge: 'bg-violet-500/90 text-white', dot: 'bg-violet-400' },
+  'dalle3':     { ring: 'ring-emerald-300',badge: 'bg-emerald-500/90 text-white',dot: 'bg-emerald-400'},
 }
 
-const MODEL_BADGE_MUTED: Record<string, string> = {
-  'flux':       'bg-blue-950/40 text-blue-800 border border-blue-900/30',
-  'sd3-medium': 'bg-purple-950/40 text-purple-800 border border-purple-900/30',
-  'sd3-large':  'bg-violet-950/40 text-violet-800 border border-violet-900/30',
-  'dalle3':     'bg-emerald-950/40 text-emerald-800 border border-emerald-900/30',
+const MODELS = [
+  { key: 'flux',       label: 'Flux 2 Klein',  short: 'Flux'  },
+  { key: 'sd3-medium', label: 'SD3 Medium',    short: 'SD3'   },
+  { key: 'dalle3',     label: 'GPT Image 1.5', short: 'GPT'   },
+  { key: 'sd3-large',  label: 'SD3.5 Large',   short: 'SD3.5' },
+]
+
+function makeDefaultSlots(): ImageSlot[] {
+  return Array.from({ length: 10 }, (_, i) => {
+    const mod = i % 4
+    const model = mod === 0 ? 'flux' : mod === 1 ? 'sd3-medium' : mod === 2 ? 'dalle3' : 'sd3-large'
+    const disp  = MODELS.find(m => m.key === model)?.label ?? model
+    const label = 'ABCDEFGHIJ'[i]
+    return { state: 'pending', model, modelDisplay: disp, label }
+  })
 }
 
-const DEFAULT_SLOTS: ImageSlot[] = Array.from({ length: 10 }, (_, i) => {
-  const mod = i % 4
-  const model = mod === 0 ? 'flux' : mod === 1 ? 'sd3-medium' : mod === 2 ? 'dalle3' : 'sd3-large'
-  const modelDisplay = model === 'flux' ? 'Flux 2 Klein' : model === 'sd3-medium' ? 'SD3 Medium' : model === 'sd3-large' ? 'SD3.5 Large' : 'GPT Image 1.5'
-  const label = ['A','B','C','D','E','F','G','H','I','J'][i]
-  return { state: 'pending', model, modelDisplay, label }
-})
+// ── Image card ───────────────────────────────────────────────────────────────
 
-// ── Sub-components ─────────────────────────────────────────────────────────
-
-function Spinner({ size = 16, color = 'currentColor' }: { size?: number; color?: string }) {
-  return (
-    <svg className="animate-spin" width={size} height={size} fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke={color} strokeWidth="4"/>
-      <path className="opacity-75" fill={color} d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-    </svg>
-  )
-}
-
-function CheckIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-    </svg>
-  )
-}
-
-function ImageSlotCard({ slot, index }: { slot: ImageSlot; index: number }) {
-  const badgeClass = slot.state === 'done'
-    ? (MODEL_BADGE[slot.model] ?? 'bg-gray-700 text-gray-300 border border-gray-600')
-    : (MODEL_BADGE_MUTED[slot.model] ?? 'bg-gray-900 text-gray-700 border border-gray-800')
+function SlotCard({ slot }: { slot: ImageSlot }) {
+  const colors = MODEL_COLOR[slot.model] ?? { ring: 'ring-gray-300', badge: 'bg-gray-500/90 text-white', dot: 'bg-gray-400' }
 
   return (
-    <div
-      className={`relative rounded-xl overflow-hidden transition-all duration-500 ${
-        slot.state === 'generating'
-          ? 'ring-2 ring-white/20 animate-pulse'
-          : slot.state === 'done'
-          ? 'ring-1 ring-white/10'
-          : ''
-      }`}
-      style={{ aspectRatio: '1 / 1', background: '#1a1a1a' }}
-    >
-      {/* Shimmer for pending/generating */}
-      {(slot.state === 'pending' || slot.state === 'generating') && (
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-shimmer" />
-      )}
+    <div className={`relative rounded-2xl overflow-hidden bg-p-fill transition-all duration-300 ${
+      slot.state === 'generating' ? `ring-2 ${colors.ring}` : 'ring-1 ring-p-border'
+    }`} style={{ aspectRatio: '1/1' }}>
 
-      {/* Error state */}
-      {slot.state === 'error' && (
-        <div className="absolute inset-0 bg-red-950/50 flex flex-col items-center justify-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-red-900/80 flex items-center justify-center">
-            <svg width="14" height="14" fill="none" stroke="#f87171" viewBox="0 0 24 24" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </div>
-          <span className="text-[10px] text-red-400 font-medium">Failed</span>
+      {/* Skeleton shimmer */}
+      {slot.state === 'pending' && (
+        <div className="absolute inset-0 bg-p-fill">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer" />
         </div>
       )}
 
-      {/* Image when done */}
+      {/* Generating pulse */}
+      {slot.state === 'generating' && (
+        <div className="absolute inset-0 bg-p-fill flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer" />
+          <svg className="animate-spin relative z-10" width="20" height="20" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+            <path className="opacity-60" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        </div>
+      )}
+
+      {/* Error */}
+      {slot.state === 'error' && (
+        <div className="absolute inset-0 bg-red-50 flex flex-col items-center justify-center gap-1.5">
+          <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center">
+            <svg width="12" height="12" fill="none" stroke="#dc2626" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </div>
+          <span className="text-[10px] text-red-500 font-semibold">Failed</span>
+        </div>
+      )}
+
+      {/* Done: actual image */}
       {slot.state === 'done' && slot.url && (
         <img
           src={slot.url}
           alt={`Variation ${slot.label}`}
-          className="w-full h-full object-cover transition-opacity duration-700"
+          className="absolute inset-0 w-full h-full object-cover"
         />
       )}
 
-      {/* Generating spinner overlay */}
-      {slot.state === 'generating' && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Spinner size={24} color="#6b7280" />
-        </div>
-      )}
-
-      {/* Label badge (bottom-left) */}
-      <div className="absolute bottom-2 left-2">
-        <span className="text-[10px] font-bold text-white/60 bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
+      {/* Variation label */}
+      <div className="absolute top-2 left-2 z-10">
+        <span className="text-[10px] font-bold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md">
           {slot.label}
         </span>
       </div>
 
-      {/* Model badge (bottom-right) */}
-      <div className="absolute bottom-2 right-2">
-        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded backdrop-blur-sm ${badgeClass}`}>
-          {slot.modelDisplay}
-        </span>
-      </div>
+      {/* Model badge — only show when generating or done */}
+      {(slot.state === 'generating' || slot.state === 'done') && (
+        <div className="absolute bottom-2 right-2 z-10">
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm ${colors.badge}`}>
+            {slot.modelDisplay}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
-// ── Main component ─────────────────────────────────────────────────────────
+// ── Main ─────────────────────────────────────────────────────────────────────
 
-export default function AgentGenerationScreen({ payload, onDone, onCancel }: Props) {
+export default function AgentGenerationScreen({ payload, onDone, onError }: Props) {
   const [kimiDone,    setKimiDone]    = useState(false)
-  const [slots,       setSlots]       = useState<ImageSlot[]>(DEFAULT_SLOTS)
+  const [slots,       setSlots]       = useState<ImageSlot[]>(makeDefaultSlots)
   const [doneCount,   setDoneCount]   = useState(0)
   const [fatalError,  setFatalError]  = useState('')
   const [finished,    setFinished]    = useState(false)
-  const [submissionId, setSubmissionId] = useState('')
-  const [allDoneMsg,  setAllDoneMsg]  = useState(false)
 
-  const totalCount = slots.length
-
-  const handleEvent = useCallback((event: any) => {
-    switch (event.type) {
-      case 'kimi_start':
-        // Kimi is running — already reflected by kimiDone=false
-        break
-
+  const handleEvent = useCallback((ev: any) => {
+    switch (ev.type) {
       case 'kimi_done':
         setKimiDone(true)
         break
-
-      case 'submission_created':
-        setSubmissionId(event.submissionId)
-        break
-
       case 'image_start':
-        setSlots(prev => prev.map((s, i) =>
-          i === event.index
-            ? { ...s, state: 'generating', model: event.model, modelDisplay: event.modelDisplay, label: event.label }
-            : s
-        ))
+        setSlots(prev => prev.map((s, i) => i === ev.index
+          ? { ...s, state: 'generating', model: ev.model, modelDisplay: ev.modelDisplay, label: ev.label }
+          : s))
         break
-
       case 'image_done':
-        setSlots(prev => prev.map((s, i) =>
-          i === event.index
-            ? {
-                ...s,
-                state:         'done',
-                url:           event.url,
-                copy:          event.copy,
-                concept_notes: event.concept_notes,
-                model:         event.model,
-                modelDisplay:  event.modelDisplay,
-                label:         event.label,
-              }
-            : s
-        ))
-        setDoneCount(prev => prev + 1)
+        setSlots(prev => prev.map((s, i) => i === ev.index
+          ? { ...s, state: 'done', url: ev.url, model: ev.model, modelDisplay: ev.modelDisplay, label: ev.label }
+          : s))
+        setDoneCount(c => c + 1)
         break
-
       case 'image_error':
-        setSlots(prev => prev.map((s, i) =>
-          i === event.index
-            ? { ...s, state: 'error', model: event.model, modelDisplay: event.modelDisplay, label: event.label }
-            : s
-        ))
-        setDoneCount(prev => prev + 1)
+        setSlots(prev => prev.map((s, i) => i === ev.index
+          ? { ...s, state: 'error', model: ev.model, modelDisplay: ev.modelDisplay, label: ev.label }
+          : s))
+        setDoneCount(c => c + 1)
         break
-
       case 'done':
-        setSubmissionId(event.submissionId)
         setFinished(true)
-        setAllDoneMsg(true)
-        setTimeout(() => { onDone(event.submissionId) }, 1500)
+        setTimeout(() => onDone(ev.submissionId), 1200)
         break
-
       case 'error':
-        setFatalError(event.message ?? 'An unexpected error occurred.')
+        setFatalError(ev.message ?? 'Generation failed')
         break
     }
   }, [onDone])
 
   useEffect(() => {
     let cancelled = false
-
     async function run() {
       let res: Response
       try {
         res = await fetch('/api/agent/designer/stream', {
-          method:  'POST',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(payload),
+          body: JSON.stringify(payload),
         })
       } catch (e: any) {
-        if (!cancelled) setFatalError(e.message ?? 'Network error')
+        if (!cancelled) setFatalError(e?.message ?? 'Network error')
         return
       }
-
       if (!res.ok || !res.body) {
-        if (!cancelled) setFatalError(`Request failed: ${res.status}`)
+        if (!cancelled) setFatalError(`Request failed (${res.status})`)
         return
       }
-
       const reader  = res.body.getReader()
       const decoder = new TextDecoder()
-      let buffer    = ''
-
+      let buf = ''
       while (!cancelled) {
         let chunk: { done: boolean; value?: Uint8Array }
-        try {
-          chunk = await reader.read()
-        } catch {
-          break
-        }
+        try { chunk = await reader.read() } catch { break }
         if (chunk.done) break
-
-        buffer += decoder.decode(chunk.value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-
+        buf += decoder.decode(chunk.value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            try {
-              const event = JSON.parse(line.slice(6))
-              if (!cancelled) handleEvent(event)
-            } catch {}
+            try { if (!cancelled) handleEvent(JSON.parse(line.slice(6))) } catch {}
           }
         }
       }
     }
-
     run()
     return () => { cancelled = true }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
+  const pct = Math.round((doneCount / 10) * 100)
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Per-model counts ──────────────────────────────────────────────────────
+  const modelCounts = MODELS.map(m => ({
+    ...m,
+    total: slots.filter(s => s.model === m.key).length,
+    done:  slots.filter(s => s.model === m.key && (s.state === 'done' || s.state === 'error')).length,
+  }))
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#0D0D0D' }}>
+    <div className="flex flex-col h-full bg-p-bg">
 
-      {/* ── Header ── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-        <div className="flex items-center gap-3">
-          {/* Star icon */}
-          <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center flex-shrink-0">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-violet-400">
-              <path d="M12 2a1 1 0 01.894.553l2.184 4.424 4.882.71a1 1 0 01.554 1.706l-3.532 3.442.834 4.862a1 1 0 01-1.451 1.054L12 16.347l-4.365 2.404a1 1 0 01-1.451-1.054l.834-4.862L3.486 9.393a1 1 0 01.554-1.706l4.882-.71L11.106 2.553A1 1 0 0112 2z"/>
-            </svg>
-          </div>
-          <span className="text-[15px] font-bold text-white">AI Designer</span>
-        </div>
-
-        {/* Progress pill */}
-        {!fatalError && (
-          <div className="flex items-center gap-3">
-            <span className="text-[13px] text-white/40 font-medium">
-              {doneCount} / {totalCount} images
-            </span>
-            <div className="w-32 h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-violet-500 rounded-full transition-all duration-500"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Close button — only when finished or error */}
-        {(finished || fatalError) && (
-          <button
-            onClick={onCancel}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all"
-            aria-label="Close"
-          >
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* ── Body ── */}
-      <div className="flex-1 flex overflow-hidden">
-
-        {/* ── Left panel ── */}
-        <div className="w-[280px] flex-shrink-0 flex flex-col gap-6 px-6 py-7 border-r border-white/[0.06] overflow-y-auto">
-
-          {/* Phase 1: Kimi K2 */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-                kimiDone ? 'bg-emerald-500' : 'bg-violet-500'
-              }`}>
-                {kimiDone
-                  ? <CheckIcon size={10} />
-                  : <Spinner size={10} color="white" />
-                }
-              </div>
-              <span className={`text-[13px] font-semibold transition-colors ${kimiDone ? 'text-white/50' : 'text-white'}`}>
-                Kimi K2 Concepts
-              </span>
-            </div>
-
-            {!kimiDone && (
-              <p className="text-[11.5px] text-white/30 leading-relaxed pl-7">
-                Analyzing brief and writing 10 creative concepts…
-              </p>
-            )}
-            {kimiDone && (
-              <p className="text-[11.5px] text-emerald-500/70 pl-7 font-medium">
-                10 concepts ready
-              </p>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="h-px bg-white/[0.06]" />
-
-          {/* Phase 2: Images */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-                finished
-                  ? 'bg-emerald-500'
-                  : kimiDone
-                  ? 'bg-violet-500'
-                  : 'bg-white/10'
-              }`}>
-                {finished
-                  ? <CheckIcon size={10} />
-                  : kimiDone
-                  ? <Spinner size={10} color="white" />
-                  : null
-                }
-              </div>
-              <span className={`text-[13px] font-semibold transition-colors ${
-                finished ? 'text-white/50' : kimiDone ? 'text-white' : 'text-white/30'
-              }`}>
-                Images Rendering
-              </span>
-            </div>
-
-            <p className={`text-[11.5px] pl-7 font-medium transition-colors ${
-              finished ? 'text-emerald-500/70' : 'text-white/30'
+      {/* ── Top bar ── */}
+      <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-p-border">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            {/* Animated star */}
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+              finished ? 'bg-emerald-100' : 'bg-violet-100'
             }`}>
-              {doneCount} / {totalCount} complete
-            </p>
-
-            {/* Per-model progress */}
-            {kimiDone && (
-              <div className="pl-7 space-y-1 pt-1">
-                {[
-                  { model: 'flux',       label: 'Flux 2 Klein',   badge: 'text-blue-400' },
-                  { model: 'sd3-medium', label: 'SD3 Medium',     badge: 'text-purple-400' },
-                  { model: 'dalle3',     label: 'GPT Image 1.5',  badge: 'text-emerald-400' },
-                  { model: 'sd3-large',  label: 'SD3.5 Large',    badge: 'text-violet-400' },
-                ].map(({ model, label, badge }) => {
-                  const modelSlots = slots.filter(s => s.model === model)
-                  const doneCt = modelSlots.filter(s => s.state === 'done' || s.state === 'error').length
-                  return (
-                    <div key={model} className="flex items-center justify-between">
-                      <span className={`text-[10.5px] font-medium ${badge}`}>{label}</span>
-                      <span className="text-[10px] text-white/20">{doneCt}/{modelSlots.length}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+              {finished ? (
+                <svg width="14" height="14" fill="none" stroke="#10b981" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c3aed">
+                  <path d="M12 2a1 1 0 01.894.553l2.184 4.424 4.882.71a1 1 0 01.554 1.706l-3.532 3.442.834 4.862a1 1 0 01-1.451 1.054L12 16.347l-4.365 2.404a1 1 0 01-1.451-1.054l.834-4.862L3.486 9.393a1 1 0 01.554-1.706l4.882-.71L11.106 2.553A1 1 0 0112 2z"/>
+                </svg>
+              )}
+            </div>
+            <div>
+              <p className="text-[13px] font-bold text-p-text leading-none">
+                {finished ? 'All done — redirecting…' : fatalError ? 'Generation failed' : 'AI Designer is working'}
+              </p>
+              <p className="text-[11px] text-p-tertiary mt-0.5">
+                {!kimiDone
+                  ? 'Kimi K2 is analyzing the brief and writing concepts…'
+                  : finished
+                  ? `${doneCount} designs generated`
+                  : `${doneCount} / 10 images complete`}
+              </p>
+            </div>
           </div>
-
-          {/* All done message */}
-          {allDoneMsg && (
-            <>
-              <div className="h-px bg-white/[0.06]" />
-              <div className="flex flex-col items-start gap-1.5">
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <CheckIcon size={14} />
-                  <span className="text-[13px] font-bold">All done!</span>
-                </div>
-                <p className="text-[11px] text-white/30">Redirecting to your designs…</p>
-              </div>
-            </>
-          )}
-
-          {/* Fatal error */}
-          {fatalError && (
-            <>
-              <div className="h-px bg-white/[0.06]" />
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <svg width="14" height="14" fill="none" stroke="#f87171" viewBox="0 0 24 24" strokeWidth={2} className="flex-shrink-0 mt-px">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                  </svg>
-                  <p className="text-[11.5px] text-red-400 leading-relaxed">{fatalError}</p>
-                </div>
-                <button
-                  onClick={onCancel}
-                  className="text-[12px] font-semibold text-white/40 hover:text-white/70 transition-colors underline"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </>
-          )}
+          <span className="text-[12px] font-bold text-p-secondary tabular-nums">{doneCount}/10</span>
         </div>
 
-        {/* ── Right panel: image grid ── */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-3 auto-rows-fr">
-            {slots.map((slot, i) => (
-              <ImageSlotCard key={i} slot={slot} index={i} />
-            ))}
+        {/* Progress bar */}
+        <div className="h-1.5 bg-p-fill rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${finished ? 'bg-emerald-500' : 'bg-violet-500'}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+
+        {/* Phase pills */}
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {/* Kimi pill */}
+          <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full transition-all ${
+            kimiDone
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-violet-50 text-violet-700 border border-violet-200'
+          }`}>
+            {kimiDone ? (
+              <svg width="9" height="9" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+            ) : (
+              <svg className="animate-spin" width="9" height="9" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            )}
+            Kimi K2
+          </span>
+
+          {/* Per-model pills — only visible once Kimi is done */}
+          {kimiDone && modelCounts.map(m => {
+            const colors = MODEL_COLOR[m.key]
+            const allDone = m.done === m.total
+            return (
+              <span key={m.key} className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                allDone
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-p-fill text-p-secondary border-p-border'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${allDone ? 'bg-emerald-400' : colors?.dot ?? 'bg-gray-400'} ${!allDone && m.done < m.total ? 'animate-pulse' : ''}`} />
+                {m.short} {m.done}/{m.total}
+              </span>
+            )
+          })}
+        </div>
+
+        {/* Error */}
+        {fatalError && (
+          <div className="mt-3 flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+            <p className="text-[12px] text-red-700 font-medium">{fatalError}</p>
+            <button onClick={onError} className="text-[12px] font-bold text-red-600 hover:text-red-800 transition-colors ml-4">
+              Dismiss
+            </button>
           </div>
+        )}
+      </div>
+
+      {/* ── Image grid ── */}
+      <div className="flex-1 overflow-y-auto p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {slots.map((slot, i) => <SlotCard key={i} slot={slot} />)}
         </div>
       </div>
 
-      {/* Global shimmer keyframe */}
+      {/* Shimmer keyframe */}
       <style>{`
-        @keyframes shimmer {
-          0%   { transform: translateX(-100%) }
-          100% { transform: translateX(100%) }
-        }
-        .animate-shimmer {
-          animation: shimmer 2s infinite linear;
-        }
+        @keyframes shimmer { 0% { transform: translateX(-100%) } 100% { transform: translateX(100%) } }
+        .animate-shimmer { animation: shimmer 1.6s infinite linear; }
       `}</style>
     </div>
   )
