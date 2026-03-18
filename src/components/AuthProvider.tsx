@@ -9,6 +9,7 @@ export type AuthUser = {
   role: 'admin' | 'member'
   org_id: string | null
   notify_email: boolean
+  avatar_url?: string | null
 }
 
 type AuthContextValue = {

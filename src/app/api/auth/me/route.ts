@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ user: null }, { status: 401 })
 
   return NextResponse.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, org_id: user.org_id, notify_email: user.notify_email }
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, org_id: user.org_id, notify_email: user.notify_email, avatar_url: user.avatar_url ?? null }
   })
 }
 
@@ -31,16 +31,17 @@ export async function PUT(request: NextRequest) {
   const userId = request.headers.get('x-user-id')
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { name, notify_email } = await request.json()
+  const { name, notify_email, avatar_url } = await request.json()
   const updates: any = {}
   if (name?.trim()) updates.name = name.trim()
   if (typeof notify_email === 'boolean') updates.notify_email = notify_email
+  if (typeof avatar_url === 'string' || avatar_url === null) updates.avatar_url = avatar_url
 
   const user = await updateUser(userId, updates)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   return NextResponse.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, org_id: user.org_id, notify_email: user.notify_email }
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, org_id: user.org_id, notify_email: user.notify_email, avatar_url: user.avatar_url ?? null }
   })
 }
 

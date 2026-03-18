@@ -31,7 +31,7 @@ export type User = {
   id: string; org_id: string | null; name: string; email: string
   role: 'admin' | 'member'; token: string
   password_hash: string | null; notify_email: boolean
-  status: 'active' | 'pending'; created_at: string
+  status: 'active' | 'pending'; avatar_url?: string | null; created_at: string
 }
 
 export type UserSession = {
@@ -183,7 +183,7 @@ export async function createUser(
   return user
 }
 
-export async function updateUser(id: string, updates: Partial<Pick<User, 'name' | 'email' | 'role' | 'password_hash' | 'notify_email' | 'org_id'>>): Promise<User | null> {
+export async function updateUser(id: string, updates: Partial<Pick<User, 'name' | 'email' | 'role' | 'password_hash' | 'notify_email' | 'org_id' | 'avatar_url'>>): Promise<User | null> {
   await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).run()
   cacheDelete(CK.user(id))
   cacheClear('user:email')

@@ -21,6 +21,7 @@ export const users = sqliteTable('users', {
   password_hash: text('password_hash'),             // null until invite accepted
   notify_email:  integer('notify_email', { mode: 'boolean' }).notNull().default(true),
   status:        text('status').notNull().default('active').$type<'active' | 'pending'>(),
+  avatar_url:    text('avatar_url'),
   created_at:    text('created_at').notNull(),
 })
 
@@ -192,3 +193,8 @@ export const client = createClient({
 })
 
 export const db = drizzle(client)
+
+// Ensure avatar_url column exists (idempotent migration)
+try {
+  client.execute('ALTER TABLE users ADD COLUMN avatar_url TEXT').catch(() => {})
+} catch {}

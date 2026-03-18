@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, FormEvent, useRef } from 'react'
 import { useAuth } from '@/components/AuthProvider'
+import Avatar from '@/components/Avatar'
 
 type Invitation = {
   id: string; email: string; role: string
@@ -30,6 +31,9 @@ export default function SettingsPage() {
   const [name, setName]         = useState(user?.name ?? '')
   const [notifyEmail, setNotify] = useState(user?.notify_email ?? true)
   const [profileMsg, setProfileMsg] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatar_url ?? null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   // Password
   const [currentPw, setCurrentPw] = useState('')
@@ -224,7 +228,32 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user?.name) setName(user.name)
     if (typeof user?.notify_email !== 'undefined') setNotify(user.notify_email)
+    if (typeof user?.avatar_url !== 'undefined') setAvatarUrl(user.avatar_url ?? null)
   }, [user])
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload/avatar', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (res.ok && data.avatar_url) {
+        setAvatarUrl(data.avatar_url)
+        refetch()
+      } else {
+        setProfileMsg(data.error ?? 'Avatar upload failed')
+        setTimeout(() => setProfileMsg(''), 3000)
+      }
+    } catch {
+      setProfileMsg('Avatar upload failed')
+      setTimeout(() => setProfileMsg(''), 3000)
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
 
   useEffect(() => {
     if (tab === 'org' && user?.role === 'admin') {
@@ -362,8 +391,27 @@ export default function SettingsPage() {
               <h2 className="font-bold text-[18px] text-p-text mb-6">Personal information</h2>
               <form onSubmit={saveProfile} className="space-y-5">
                 <div className="flex items-center gap-5 mb-8">
-                  <div className="w-20 h-20 rounded-[2rem] bg-p-accent flex items-center justify-center text-white font-bold text-3xl flex-shrink-0">
-                    {user?.name[0]?.toUpperCase() ?? '?'}
+                  <div className="relative group cursor-pointer flex-shrink-0" onClick={() => avatarInputRef.current?.click()}>
+                    <Avatar src={avatarUrl} name={user?.name ?? '?'} size={80} colorIndex={0} />
+                    <div className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      {avatarUploading ? (
+                        <svg className="animate-spin" width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                        </svg>
+                      ) : (
+                        <svg width="20" height="20" fill="none" stroke="white" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                      )}
+                    </div>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
                   </div>
                   <div>
                     <p className="font-bold text-[16px] text-p-text">{user?.name}</p>
@@ -371,6 +419,7 @@ export default function SettingsPage() {
                     <span className="inline-block mt-2 px-3 py-1 rounded-full bg-p-fill border-2 border-p-border text-[11px] font-bold text-p-tertiary uppercase tracking-widest">
                       {user?.role}
                     </span>
+                    <p className="text-[11px] text-p-quaternary mt-2">Click photo to change</p>
                   </div>
                 </div>
 

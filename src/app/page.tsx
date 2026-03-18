@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/components/AuthProvider'
+import Avatar from '@/components/Avatar'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ type Task = {
   status: string
   priority: 'low' | 'medium' | 'high'
   assignee: { name: string } | null
+  assignor: { name: string } | null
   due_date: string | null
 }
 
@@ -34,8 +36,11 @@ type TeamMember = {
   email: string
   role: 'admin' | 'member'
   token: string
+  avatar_url?: string | null
   step?: number
   focus?: string
+  tasks_open?: number
+  tasks_completed?: number
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -153,13 +158,16 @@ function TaskRow({ task }: { task: Task }) {
         </span>
       )}
 
-      {/* Assignee */}
-      {task.assignee && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="w-6 h-6 rounded-full bg-p-fill flex items-center justify-center border-2 border-p-border">
-            <span className="text-[10px] font-bold text-p-secondary">{task.assignee.name[0]}</span>
-          </div>
-          <span className="text-[12px] font-semibold text-p-secondary hidden xl:block">{task.assignee.name}</span>
+      {/* Assigned by → to */}
+      {(task.assignor || task.assignee) && (
+        <div className="flex items-center gap-1.5 flex-shrink-0 text-[11px] text-p-tertiary hidden lg:flex">
+          {task.assignor && <span className="font-medium text-p-secondary">{task.assignor.name}</span>}
+          {task.assignor && task.assignee && (
+            <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          )}
+          {task.assignee && <span className="font-semibold text-p-text">{task.assignee.name}</span>}
         </div>
       )}
 
@@ -215,7 +223,6 @@ export default function Dashboard() {
   const [search, setSearch]           = useState('')
   const [wfFilter, setWfFilter]       = useState('all')
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
-  const [copied, setCopied]           = useState<string | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Keyboard shortcut: / → focus search
@@ -241,24 +248,10 @@ export default function Dashboard() {
       })
       .finally(() => setLoading(false))
 
-    if (authUser?.role === 'admin') {
-      Promise.all([
-        fetch('/api/admin/users').then(r => r.json()),
-        fetch('/api/admin/workflows').then(r => r.json()),
-      ]).then(([ud, wd]) => {
-        const usrs: any[]  = ud.users     ?? []
-        const wfs: any[]   = wd.workflows ?? []
-        const activeWf     = wfs.find((w: any) => w.is_active) ?? wfs[0]
-        const steps: any[] = activeWf?.steps ?? []
-        const enriched = usrs
-          .map((u: any) => {
-            const step = steps.find((s: any) => s.user_id === u.id)
-            return { ...u, step: step?.step, focus: step?.focus }
-          })
-          .sort((a: any, b: any) => (a.step ?? 999) - (b.step ?? 999))
-        setTeam(enriched)
-      }).catch(() => {})
-    }
+    // Always fetch team members for all users
+    fetch('/api/members').then(r => r.json()).then(d => {
+      setTeam(d.members ?? [])
+    }).catch(() => {})
   }, [authUser?.role])
 
   const workflowOptions = useMemo(() => {
@@ -286,12 +279,6 @@ export default function Dashboard() {
     if (activeFilter === 'done')      return done
     return [...needsAction, ...inReview]
   }, [activeFilter, needsAction, inReview, done])
-
-  function copyLink(token: string) {
-    navigator.clipboard.writeText(`${window.location.origin}/review/${token}`)
-    setCopied(token)
-    setTimeout(() => setCopied(null), 2000)
-  }
 
   const hasAnySubmissions = !loading && submissions.length > 0
 
@@ -523,51 +510,29 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Review Team */}
+              {/* Team Members */}
               {team.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-6">
-                    <SectionHeader>Review Team</SectionHeader>
-                    <Link href="/admin" className="text-[12px] font-bold text-p-accent hover:text-p-accent-h transition-colors -mt-6">
-                      Manage →
-                    </Link>
+                    <SectionHeader>Team</SectionHeader>
                   </div>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     {team.slice(0, 6).map((member, i) => (
-                      <div key={member.id} className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-white border-2 border-transparent hover:border-p-border/60 shadow-sm transition-all">
-                        <div
-                          className="w-9 h-9 rounded-2xl flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0"
-                          style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
-                        >
-                          {member.name[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[13.5px] font-bold text-p-text truncate">{member.name}</div>
-                          <div className="text-[11px] text-p-tertiary mt-px">
-                            {member.step ? `Step ${member.step}${member.focus ? ` · ${member.focus}` : ''}` : member.role === 'admin' ? 'Admin' : 'Member'}
+                      <Link
+                        key={member.id}
+                        href={`/members/${member.id}`}
+                        className="flex flex-col gap-2 p-4 rounded-2xl bg-white border-2 border-transparent hover:border-p-border/60 shadow-sm hover:shadow-card transition-all duration-200"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Avatar src={member.avatar_url} name={member.name} size={36} colorIndex={i} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-bold text-p-text truncate">{member.name}</div>
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-p-fill border border-p-border text-p-tertiary mt-0.5">
+                              {member.role}
+                            </span>
                           </div>
                         </div>
-                        <button
-                          onClick={() => copyLink(member.token)}
-                          title="Copy review link"
-                          className={`flex-shrink-0 px-3 py-1.5 rounded-xl border-2 transition-all text-[11px] font-bold flex items-center gap-1.5
-                            ${copied === member.token
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                              : 'bg-p-fill border-p-border text-p-tertiary hover:border-p-accent/40 hover:text-p-accent hover:bg-p-accent-soft'
-                            }`}
-                        >
-                          {copied === member.token ? (
-                            <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-                            </svg>
-                          ) : (
-                            <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                            </svg>
-                          )}
-                          {copied === member.token ? 'Copied' : 'Link'}
-                        </button>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
