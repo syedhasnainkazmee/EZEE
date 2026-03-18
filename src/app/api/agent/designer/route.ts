@@ -17,10 +17,17 @@ const KIMI_MODEL_VISION = 'moonshotai/kimi-k2.5'
 // Image generation endpoints
 const FLUX_BASE       = 'https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.2-klein-4b'
 const SD3_MEDIUM_BASE = 'https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3-medium'
-const SD3_LARGE_BASE  = 'https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3_5-large' // verify URL when key activates
+const SD3_LARGE_BASE  = 'https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3_5-large'
+const OPENAI_BASE     = 'https://api.openai.com/v1'
 
-// Distribution: indices 0,3,6,9 → Flux | 1,4,7 → SD3 Medium | 2,5,8 → SD3.5 Large
-const MODEL_FOR_INDEX = (i: number) => i % 3 === 0 ? 'flux' : i % 3 === 1 ? 'sd3-medium' : 'sd3-large'
+// Distribution across 10 images: 0,4,8→Flux | 1,5,9→SD3 Medium | 2,6→DALL-E 3 | 3,7→SD3.5 Large
+const MODEL_FOR_INDEX = (i: number) => {
+  const mod = i % 4
+  if (mod === 0) return 'flux'
+  if (mod === 1) return 'sd3-medium'
+  if (mod === 2) return 'dalle3'
+  return 'sd3-large'
+}
 
 export const maxDuration = 300
 
@@ -136,11 +143,34 @@ async function generateImageWithSD3(
   return Buffer.from(b64, 'base64')
 }
 
+// DALL-E 3: returns { data: [{ b64_json }] }
+async function generateImageWithDALLE3(prompt: string, width: number, height: number): Promise<Buffer> {
+  const key = process.env.OPENAI_API_KEY
+  if (!key) throw new Error('OPENAI_API_KEY not set')
+
+  // DALL-E 3 supports fixed sizes only
+  let size: '1024x1024' | '1792x1024' | '1024x1792' = '1024x1024'
+  if (width > height)  size = '1792x1024'
+  else if (height > width) size = '1024x1792'
+
+  const res = await fetch(`${OPENAI_BASE}/images/generations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify({ model: 'dall-e-3', prompt, size, quality: 'hd', response_format: 'b64_json', n: 1 }),
+  })
+  if (!res.ok) throw new Error(`DALL-E 3 ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  const data = await res.json()
+  const b64 = data?.data?.[0]?.b64_json
+  if (!b64) throw new Error('DALL-E 3 returned no image data')
+  return Buffer.from(b64, 'base64')
+}
+
 // Dispatch to the right model — SD3.5 Large falls back to SD3 Medium if 404
 async function generateImage(prompt: string, index: number, width: number, height: number): Promise<Buffer> {
   const model = MODEL_FOR_INDEX(index)
   if (model === 'flux')       return generateImageWithFlux(prompt, width, height)
   if (model === 'sd3-medium') return generateImageWithSD3(prompt, width, height, 'sd3-medium')
+  if (model === 'dalle3')     return generateImageWithDALLE3(prompt, width, height)
   // SD3.5 Large — fall back to SD3 Medium if endpoint not yet accessible
   try {
     return await generateImageWithSD3(prompt, width, height, 'sd3-large')

@@ -5,9 +5,9 @@ export async function GET(request: NextRequest) {
   const userId = request.headers.get('x-user-id')
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Include submissions explicitly owned by this user + legacy submissions with no owner set
+  // Include submissions owned by this user, AI-generated submissions, and legacy submissions with no owner set
   const all = await getAllSubmissions()
-  const submissions = all.filter(s => s.submitted_by === userId || !s.submitted_by)
+  const submissions = all.filter(s => s.submitted_by === userId || !s.submitted_by || s.submitted_by === 'ai-designer-agent')
 
   const enriched = await Promise.all(submissions.map(async sub => {
     if (sub.status === 'changes_requested') {

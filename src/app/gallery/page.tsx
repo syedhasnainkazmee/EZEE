@@ -16,13 +16,14 @@ type GalleryDesign = {
   submission_tags: string | null
 }
 
-const MODEL_FILTERS = ['All', 'Flux', 'SD3', 'SD3.5'] as const
+const MODEL_FILTERS = ['All', 'Flux', 'SD3', 'SD3.5', 'DALL-E'] as const
 type ModelFilter = typeof MODEL_FILTERS[number]
 
 function modelLabel(model: string | null) {
   if (model === 'flux')       return 'Flux'
   if (model === 'sd3-medium') return 'SD3'
   if (model === 'sd3-large')  return 'SD3.5'
+  if (model === 'dalle3')     return 'DALL-E'
   return null
 }
 
@@ -30,14 +31,16 @@ function modelColors(model: string | null) {
   if (model === 'flux')       return 'bg-blue-50 text-blue-600 border-blue-100'
   if (model === 'sd3-medium') return 'bg-purple-50 text-purple-600 border-purple-100'
   if (model === 'sd3-large')  return 'bg-orange-50 text-orange-600 border-orange-100'
+  if (model === 'dalle3')     return 'bg-emerald-50 text-emerald-600 border-emerald-100'
   return 'bg-p-fill text-p-tertiary'
 }
 
 function matchesFilter(design: GalleryDesign, filter: ModelFilter) {
-  if (filter === 'All')  return true
-  if (filter === 'Flux') return design.model === 'flux'
-  if (filter === 'SD3')  return design.model === 'sd3-medium'
-  if (filter === 'SD3.5') return design.model === 'sd3-large'
+  if (filter === 'All')    return true
+  if (filter === 'Flux')   return design.model === 'flux'
+  if (filter === 'SD3')    return design.model === 'sd3-medium'
+  if (filter === 'SD3.5')  return design.model === 'sd3-large'
+  if (filter === 'DALL-E') return design.model === 'dalle3'
   return true
 }
 
@@ -49,12 +52,17 @@ export default function GalleryPage() {
 
   useEffect(() => {
     fetch('/api/gallery')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then(d => {
+        console.log('[gallery] API response:', d)
         const rows: GalleryDesign[] = d.designs ?? []
         setDesigns(rows)
         setLikedIds(new Set(rows.filter(r => r.liked).map(r => r.id)))
       })
+      .catch(err => console.error('[gallery] fetch error:', err))
       .finally(() => setLoading(false))
   }, [])
 
@@ -74,10 +82,11 @@ export default function GalleryPage() {
   const filtered = designs.filter(d => matchesFilter(d, filter))
 
   const counts = {
-    All:   designs.length,
-    Flux:  designs.filter(d => d.model === 'flux').length,
-    SD3:   designs.filter(d => d.model === 'sd3-medium').length,
+    All:     designs.length,
+    Flux:    designs.filter(d => d.model === 'flux').length,
+    SD3:     designs.filter(d => d.model === 'sd3-medium').length,
     'SD3.5': designs.filter(d => d.model === 'sd3-large').length,
+    'DALL-E': designs.filter(d => d.model === 'dalle3').length,
   }
 
   return (
