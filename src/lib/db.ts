@@ -589,6 +589,15 @@ export async function updateSubmission(id: string, updates: Partial<Submission>)
   return await getSubmission(id) ?? null
 }
 
+export async function deleteSubmission(id: string): Promise<boolean> {
+  await db.delete(annotationsTable).where(eq(annotationsTable.submission_id, id)).run()
+  await db.delete(reviewsTable).where(eq(reviewsTable.submission_id, id)).run()
+  await db.delete(designsTable).where(eq(designsTable.submission_id, id)).run()
+  await db.delete(submissionsTable).where(eq(submissionsTable.id, id)).run()
+  cacheDelete(CK.submissions())
+  return true
+}
+
 export type LibraryItem = {
   id: string; title: string; description: string; tags: string[]
   drive_folder_url: string | null; created_at: string

@@ -45,10 +45,11 @@ function fmtDate(s: string) {
 
 // ── TaskCard ───────────────────────────────────────────────────────────────
 
-function TaskCard({ task, users, index, onStatusChange, onRefresh }: {
+function TaskCard({ task, users, index, onStatusChange, onRefresh, onDelete }: {
   task: Task; users: User[]; index: number
   onStatusChange: (id: string, status: Task['status']) => void
   onRefresh: () => void
+  onDelete: (id: string) => void
 }) {
   const { user: authUser } = useAuth()
   const [expanded, setExpanded]       = useState(false)
@@ -58,6 +59,15 @@ function TaskCard({ task, users, index, onStatusChange, onRefresh }: {
   const [loadingSubs, setLoadingSubs] = useState(false)
   const [uploading, setUploading]     = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [isEditing, setIsEditing]   = useState(false)
+  const [editTitle, setEditTitle]   = useState(task.title)
+  const [editDesc, setEditDesc]     = useState(task.description)
+  const [editPriority, setEditPriority] = useState(task.priority)
+  const [editDueDate, setEditDueDate]   = useState(task.due_date ?? '')
+  const [editAssignee, setEditAssignee] = useState(task.assignee_id ?? '')
+  const [editSaving, setEditSaving] = useState(false)
+
+  const isOwner = authUser?.id === task.assignor_id || authUser?.role === 'admin'
 
   const pCfg = PRIORITY_CONFIG[task.priority]
   const sCfg = STATUS_CONFIG[task.status]
@@ -113,6 +123,27 @@ function TaskCard({ task, users, index, onStatusChange, onRefresh }: {
     loadDetails()
     setUploading(false)
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function saveEdit() {
+    setEditSaving(true)
+    await fetch(`/api/tasks/${task.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: editTitle, description: editDesc,
+        priority: editPriority, due_date: editDueDate || null,
+        assignee_id: editAssignee || null,
+      }),
+    })
+    setEditSaving(false)
+    setIsEditing(false)
+    onRefresh()
+  }
+
+  async function handleDelete() {
+    await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' })
+    onDelete(task.id)
   }
 
   async function deleteAttachment(id: string) {
@@ -179,7 +210,18 @@ function TaskCard({ task, users, index, onStatusChange, onRefresh }: {
           </div>
 
           {/* Right: assignee + controls */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+            {isOwner && (
+              <button
+                onClick={handleDelete}
+                className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-xl flex items-center justify-center text-p-quaternary hover:text-red-500 hover:bg-red-50 transition-all"
+                title="Delete task"
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            )}
             {task.assignee && (
               <div className="flex items-center gap-2 bg-p-fill border-2 border-p-border px-3 py-2 rounded-2xl">
                 <div
@@ -232,20 +274,89 @@ function TaskCard({ task, users, index, onStatusChange, onRefresh }: {
                 <option value="completed">Completed</option>
               </select>
             </div>
-            <Link
-              href={`/submit?task_id=${task.id}`}
-              className="inline-flex items-center gap-2 text-[13px] font-bold px-5 py-2.5 rounded-2xl transition-all text-white hover:-translate-y-0.5 active:translate-y-0"
-              style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 4px 12px -3px rgba(212,81,46,0.38)' }}
-            >
-              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
-              </svg>
-              Submit design
-            </Link>
+            <div className="flex items-center gap-2">
+              {isOwner && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center gap-1.5 text-[13px] font-bold px-4 py-2.5 rounded-2xl border-2 border-p-border text-p-secondary hover:text-p-text hover:border-p-text/30 transition-all"
+                >
+                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                  Edit
+                </button>
+              )}
+              <Link
+                href={`/submit?task_id=${task.id}`}
+                className="inline-flex items-center gap-2 text-[13px] font-bold px-5 py-2.5 rounded-2xl transition-all text-white hover:-translate-y-0.5 active:translate-y-0"
+                style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)', boxShadow: '0 4px 12px -3px rgba(212,81,46,0.38)' }}
+              >
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Submit design
+              </Link>
+            </div>
           </div>
 
+          {/* Inline edit form */}
+          {isEditing && (
+            <div className="bg-white rounded-2xl border-2 border-p-accent/30 p-6 space-y-4 animate-fade-in">
+              <h4 className="text-[12px] font-bold text-p-tertiary uppercase tracking-widest">Edit Task</h4>
+              <input
+                autoFocus
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                className="w-full border-2 border-p-border rounded-2xl px-4 py-3 text-[15px] font-semibold text-p-text focus:outline-none focus:border-p-accent/60 bg-p-bg transition-all"
+                placeholder="Task title"
+              />
+              <textarea
+                value={editDesc}
+                onChange={e => setEditDesc(e.target.value)}
+                rows={2}
+                placeholder="Description (optional)"
+                className="w-full border-2 border-p-border rounded-2xl px-4 py-3 text-[14px] text-p-text focus:outline-none focus:border-p-accent/60 bg-p-bg resize-none transition-all"
+              />
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-p-tertiary mb-1.5 uppercase tracking-widest">Assignee</label>
+                  <select value={editAssignee} onChange={e => setEditAssignee(e.target.value)}
+                    className="w-full bg-p-bg border-2 border-p-border rounded-xl px-3 py-2.5 text-[13px] font-semibold text-p-text focus:outline-none focus:border-p-accent/60 cursor-pointer">
+                    <option value="">Unassigned</option>
+                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-p-tertiary mb-1.5 uppercase tracking-widest">Priority</label>
+                  <select value={editPriority} onChange={e => setEditPriority(e.target.value as any)}
+                    className="w-full bg-p-bg border-2 border-p-border rounded-xl px-3 py-2.5 text-[13px] font-semibold text-p-text focus:outline-none focus:border-p-accent/60 cursor-pointer">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-p-tertiary mb-1.5 uppercase tracking-widest">Due date</label>
+                  <input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)}
+                    className="w-full bg-p-bg border-2 border-p-border rounded-xl px-3 py-2.5 text-[13px] font-semibold text-p-text focus:outline-none focus:border-p-accent/60" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2.5 pt-1">
+                <button onClick={() => setIsEditing(false)}
+                  className="px-5 py-2.5 rounded-2xl text-[13px] font-bold text-p-secondary hover:text-p-text border-2 border-transparent hover:border-p-border hover:bg-p-fill transition-all">
+                  Cancel
+                </button>
+                <button onClick={saveEdit} disabled={editSaving || !editTitle.trim()}
+                  className="px-6 py-2.5 rounded-2xl text-[13px] font-bold text-white disabled:opacity-50 transition-all hover:-translate-y-0.5"
+                  style={{ background: 'linear-gradient(135deg, #D4512E, #C04428)' }}>
+                  {editSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Description */}
-          {task.description && (
+          {task.description && !isEditing && (
             <p className="text-[14px] text-p-secondary leading-relaxed">{task.description}</p>
           )}
 
@@ -666,6 +777,7 @@ export default function TasksPage() {
                     index={i}
                     onStatusChange={handleStatusChange}
                     onRefresh={() => fetchTasks(selectedProject)}
+                    onDelete={id => setTasks(prev => prev.filter(t => t.id !== id))}
                   />
                 ))}
               </div>
