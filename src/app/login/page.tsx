@@ -71,8 +71,7 @@ function LoginContent() {
         return
       }
       const from = searchParams.get('from')
-      const onboardingDone = localStorage.getItem('onboarding_complete')
-      window.location.href = from ?? (onboardingDone ? '/' : '/onboarding')
+      window.location.href = from ?? '/'
     } catch {
       setError('Network error. Please try again.')
     } finally {
