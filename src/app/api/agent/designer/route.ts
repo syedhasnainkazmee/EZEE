@@ -143,26 +143,34 @@ async function generateImageWithSD3(
   return Buffer.from(b64, 'base64')
 }
 
-// GPT Image 1: returns { data: [{ b64_json }] }
+// GPT Image 1.5: returns { data: [{ url }] }
 async function generateImageWithDALLE3(prompt: string, width: number, height: number): Promise<Buffer> {
   const key = process.env.OPENAI_API_KEY
   if (!key) throw new Error('OPENAI_API_KEY not set')
 
-  // gpt-image-1 supported sizes
+  // gpt-image-1.5 supported sizes
   let size: '1024x1024' | '1536x1024' | '1024x1536' = '1024x1024'
   if (width > height)  size = '1536x1024'
   else if (height > width) size = '1024x1536'
 
+  // Force photorealism — model defaults to illustrative/painterly without this
+  const realisticPrompt = `Photorealistic photograph only. Not illustrated, not digital art, not cartoon, not painting. ${prompt}`
+
   const res = await fetch(`${OPENAI_BASE}/images/generations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({ model: 'gpt-image-1', prompt, size, quality: 'high', n: 1 }),
+    body: JSON.stringify({ model: 'gpt-image-1.5', prompt: realisticPrompt, size, quality: 'medium', n: 1 }),
   })
-  if (!res.ok) throw new Error(`GPT Image 1 ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  if (!res.ok) throw new Error(`GPT Image 1.5 ${res.status}: ${(await res.text()).slice(0, 200)}`)
   const data = await res.json()
-  const b64 = data?.data?.[0]?.b64_json
-  if (!b64) throw new Error('GPT Image 1 returned no image data')
-  return Buffer.from(b64, 'base64')
+
+  // gpt-image-1.5 returns a temporary URL, not base64
+  const url = data?.data?.[0]?.url
+  if (!url) throw new Error('GPT Image 1.5 returned no image URL')
+
+  const imgRes = await fetch(url)
+  if (!imgRes.ok) throw new Error(`Failed to fetch GPT Image 1.5 result: ${imgRes.status}`)
+  return Buffer.from(await imgRes.arrayBuffer())
 }
 
 // Dispatch to the right model — SD3.5 Large falls back to SD3 Medium if 404

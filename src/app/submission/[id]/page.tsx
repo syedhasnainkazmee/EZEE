@@ -427,7 +427,7 @@ export default function SubmissionDetail() {
                             : design.model === 'dalle3'     ? 'bg-emerald-50 text-emerald-600'
                             :                                 'bg-orange-50 text-orange-600'
                           }`}>
-                            {design.model === 'flux' ? 'Flux' : design.model === 'sd3-medium' ? 'SD3' : design.model === 'dalle3' ? 'GPT-Img' : 'SD3.5'}
+                            {design.model === 'flux' ? 'Flux' : design.model === 'sd3-medium' ? 'SD3' : design.model === 'dalle3' ? 'GPT-1.5' : 'SD3.5'}
                           </span>
                         )}
                         {isAgentSubmission && (
